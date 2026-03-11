@@ -10,9 +10,9 @@ export default function WorkerPanel({
   onAddWorker,
   onRemoveWorker,
   onSelectWorker,
-  onHoverWorker,
   onLoadDay,
   onUpdateWorker,
+  manualMode,
   showStatus,
 }) {
   const [name, setName] = useState("");
@@ -154,8 +154,8 @@ export default function WorkerPanel({
               className="color-dot"
               style={{ background: getPersonColor(selectedWorker.name) }}
             />
-            {selectedWorker.name} 선택됨 — 점검자 칸 클릭으로 배정 (여러 칸
-            가능)
+            {selectedWorker.name} 선택됨
+            {manualMode && " — 점검자 칸 클릭으로 배정 (여러 칸 가능)"}
           </div>
         )}
 
@@ -214,10 +214,13 @@ export default function WorkerPanel({
                       <td className="num-cell">{w.number}</td>
                       <td>
                         <span
-                          className={`worker-name-cell${isSel ? " selected" : ""}`}
+                          className="worker-name-cell"
                           style={
                             isSel
-                              ? {}
+                              ? {
+                                  backgroundColor: color + "44",
+                                  borderLeft: `3px solid ${color}`,
+                                }
                               : isAssigned
                                 ? {
                                     backgroundColor: "#d0d0d0",
@@ -229,8 +232,6 @@ export default function WorkerPanel({
                                   }
                           }
                           onClick={() => !isEditing && onSelectWorker(w.id)}
-                          onMouseEnter={() => !isEditing && onHoverWorker(w.id)}
-                          onMouseLeave={() => onHoverWorker(null)}
                         >
                           {w.name}
                         </span>
@@ -253,6 +254,7 @@ export default function WorkerPanel({
                         )}
                         {myRooms.length > 0 && (
                           <div className="assigned-rooms">
+                            <span className="room-count-badge">{myRooms.length}개 담당</span>
                             {myRooms.join(", ")}
                           </div>
                         )}
@@ -350,9 +352,13 @@ export default function WorkerPanel({
         </div>
 
         <div className="hint-text">
-          이름 위 마우스 → 담당 가능 강의실 초록 표시
-          <br />
-          이름 클릭 → 점검자 칸 클릭으로 복수 배정 | 자기 칸 재클릭 → 해제
+          이름 클릭 → 담당 강의실 색상 표시
+          {manualMode && (
+            <>
+              <br />
+              수동 모드: 점검자 칸 클릭으로 배정 | 자기 칸 재클릭 → 해제
+            </>
+          )}
         </div>
       </div>
     </div>

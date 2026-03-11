@@ -8,19 +8,20 @@ export default function App() {
   const [classrooms, setClassrooms] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState(null);
-  const [hoveredWorkerId, setHoveredWorkerId] = useState(null);
+  const [manualMode, setManualMode] = useState(false);
   const [mode, setMode] = useState("paste"); // 'paste' | 'table'
   const [status, setStatus] = useState({ text: "", type: "" });
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [events, setEvents] = useState([]);
 
-  const enrichedClassrooms = useMemo(() =>
-    classrooms.map(c => {
-      const effectiveSlots = computeEffectiveSlots(c, events);
-      return effectiveSlots === c.timeSlots ? c : { ...c, effectiveSlots };
-    }),
-    [classrooms, events]
+  const enrichedClassrooms = useMemo(
+    () =>
+      classrooms.map((c) => {
+        const effectiveSlots = computeEffectiveSlots(c, events);
+        return effectiveSlots === c.timeSlots ? c : { ...c, effectiveSlots };
+      }),
+    [classrooms, events],
   );
 
   const workerCounterRef = useRef(1);
@@ -106,7 +107,9 @@ export default function App() {
   }, []);
 
   const updateWorker = useCallback((id, workTimes) => {
-    setWorkers((prev) => prev.map((w) => w.id === id ? { ...w, workTimes } : w));
+    setWorkers((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, workTimes } : w)),
+    );
   }, []);
 
   const selectWorker = useCallback((id) => {
@@ -115,34 +118,41 @@ export default function App() {
 
   // ===== UPDATE CLASSROOM =====
   const updateClassroom = useCallback((id, timeSlots) => {
-    setClassrooms(prev => prev.map(c => c.id === id ? { ...c, timeSlots } : c));
+    setClassrooms((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, timeSlots } : c)),
+    );
   }, []);
 
   // ===== EVENTS =====
   const addEvent = useCallback((room, time) => {
-    setEvents(prev => [...prev, { id: uid(), room, time }]);
+    setEvents((prev) => [...prev, { id: uid(), room, time }]);
   }, []);
 
   const removeEvent = useCallback((id) => {
-    setEvents(prev => prev.filter(e => e.id !== id));
+    setEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
   // ===== AUTO ASSIGN =====
   const handleAutoAssign = useCallback(() => {
-    setClassrooms(prev => {
-      const enriched = prev.map(c => {
+    setClassrooms((prev) => {
+      const enriched = prev.map((c) => {
         const effectiveSlots = computeEffectiveSlots(c, events);
         return effectiveSlots === c.timeSlots ? c : { ...c, effectiveSlots };
       });
       const result = autoAssign(enriched, workers);
       // strip effectiveSlots from result, keep only the base classroom data + inspectorId
       const stripped = result.map(({ effectiveSlots: _, ...c }) => c);
-      const assigned = stripped.filter(c => c.inspectorId).length;
-      const unassigned = stripped.filter(c => c.timeSlots.length > 0 && !c.inspectorId).length;
+      const assigned = stripped.filter((c) => c.inspectorId).length;
+      const unassigned = stripped.filter(
+        (c) => c.timeSlots.length > 0 && !c.inspectorId,
+      ).length;
       if (unassigned > 0) {
-        showStatus(`자동 배정 완료: ${assigned}개 배정, ${unassigned}개 미배정 (근무시간 불일치)`, 'warn');
+        showStatus(
+          `자동 배정 완료: ${assigned}개 배정, ${unassigned}개 미배정 (근무시간 불일치)`,
+          "warn",
+        );
       } else {
-        showStatus(`자동 배정 완료: ${assigned}개 전체 배정`, 'ok');
+        showStatus(`자동 배정 완료: ${assigned}개 전체 배정`, "ok");
       }
       return stripped;
     });
@@ -197,13 +207,14 @@ export default function App() {
           classrooms={enrichedClassrooms}
           workers={workers}
           selectedWorkerId={selectedWorkerId}
-          hoveredWorkerId={hoveredWorkerId}
           mode={mode}
           status={status}
           events={events}
           onImport={importData}
           onClear={clearAll}
           onSwitchToPaste={() => setMode("paste")}
+          manualMode={manualMode}
+          onToggleManualMode={() => setManualMode((v) => !v)}
           onInspectorClick={handleInspectorClick}
           onAutoAssign={handleAutoAssign}
           onUpdateClassroom={updateClassroom}
@@ -215,11 +226,11 @@ export default function App() {
           classrooms={enrichedClassrooms}
           selectedWorkerId={selectedWorkerId}
           selectedDay={selectedDay}
+          manualMode={manualMode}
           onAddWorker={addWorker}
           onRemoveWorker={removeWorker}
           onUpdateWorker={updateWorker}
           onSelectWorker={selectWorker}
-          onHoverWorker={setHoveredWorkerId}
           onLoadDay={loadDay}
           showStatus={showStatus}
         />

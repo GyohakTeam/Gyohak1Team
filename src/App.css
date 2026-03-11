@@ -219,10 +219,15 @@ tr:last-child td { border-bottom: none; }
 
 /* ===== CLASSROOM TABLE ===== */
 .classroom-row { transition: background 0.12s; }
-.classroom-row:hover td { background: var(--gray-100); }
 
-.classroom-row.hover-available td  { background: var(--green-bg) !important; }
-.classroom-row.hover-unavailable td { background: var(--white) !important; opacity: 0.5; }
+/* 선택된 근무자 행 전체를 개인 색으로 */
+.classroom-row.sel-highlight td { background: var(--sel-color) !important; transition: background 0.15s; }
+/* 나머지 행 흐리게 */
+.classroom-row.sel-dimmed td:not(.inspector-cell) { background: #efefef !important; opacity: 0.4; }
+.classroom-row.sel-dimmed td.inspector-cell        { opacity: 0.55; }
+
+/* 수동 모드 버튼 활성 상태 */
+.reload-btn.manual-active { background: var(--black); color: var(--white); border-color: var(--black); }
 
 .time-chips { display: flex; flex-wrap: wrap; gap: 3px; }
 
@@ -357,8 +362,7 @@ tr:last-child td { border-bottom: none; }
   user-select: none;
   display: inline-block;
 }
-.worker-name-cell:hover    { filter: brightness(0.92); }
-.worker-name-cell.selected { background: var(--black) !important; color: var(--white); border-left-color: var(--black) !important; filter: none; }
+.worker-name-cell:hover { filter: brightness(0.88); }
 
 .work-time-badge {
   display: block;
@@ -376,6 +380,18 @@ tr:last-child td { border-bottom: none; }
   color: var(--gray-500);
   margin-top: 2px;
   line-height: 1.4;
+}
+.room-count-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: bold;
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-right: 5px;
+  vertical-align: middle;
 }
 
 /* ===== EDIT BUTTON & INLINE EDIT ===== */

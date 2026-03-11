@@ -125,48 +125,56 @@ export function getWorkerFloors(classrooms, workerId) {
 }
 
 // ===== 자동 배정 =====
-export function autoAssign(classrooms, workers) {
-  if (!workers.length || !classrooms.length) return classrooms;
 
-  const assignable = classrooms.filter(c => getSlots(c).length > 0);
-  if (!assignable.length) return classrooms;
+// 한 run의 그리디 배정.
+// commonWindow 기반: 근무자별 "현재까지 배정된 강의실들의 공통 시간 교집합 ∩ 근무시간"을 추적.
+// 새 강의실을 배정할 때 교집합이 유지되면(1회 이동) 우선, 비면 10000점 패널티.
+function greedyRun(order, workers, randomizePool) {
+  // 초기 공통 창 = 근무시간 전체
+  const commonWindows = new Map(
+    workers.map(w => [w.id, w.workTimes.map(t => parseRange(t)).filter(Boolean)])
+  );
 
-  const sorted = [...assignable].sort((a, b) => {
-    const ea = workers.filter(w => canInspect(w, a)).length;
-    const eb = workers.filter(w => canInspect(w, b)).length;
-    return ea - eb;
-  });
+  let state = new Map(order.map(c => [c.id, { ...c, inspectorId: null }]));
 
-  let state = assignable.map(c => ({ ...c, inspectorId: null }));
-
-  for (const classroom of sorted) {
+  for (const classroom of order) {
     const eligible = workers.filter(w => canInspect(w, classroom));
     if (!eligible.length) continue;
 
-    // 편차 1 하드 제약: 전체 근무자 중 최솟값 기준 +1 이하인 근무자만 후보
-    const counts = new Map(workers.map(w => [w.id, state.filter(c => c.inspectorId === w.id).length]));
-    const globalMin = Math.min(...[...counts.values()]);
+    const counts = new Map(workers.map(w => [w.id, 0]));
+    for (const c of state.values()) {
+      if (c.inspectorId) counts.set(c.inspectorId, (counts.get(c.inspectorId) || 0) + 1);
+    }
+    const globalMin = Math.min(...counts.values());
     const candidates = eligible.filter(w => counts.get(w.id) <= globalMin + 1);
-    // 모두 제약 초과 시(시간 불일치로 특정 근무자만 가능) 제약 완화
-    const pool = candidates.length > 0 ? candidates : eligible;
+    let pool = candidates.length > 0 ? candidates : eligible;
 
+    // 다양성을 위해 풀 셔플 (multi-restart 시)
+    if (randomizePool) {
+      pool = [...pool].sort(() => Math.random() - 0.5);
+    }
+
+    const classroomSlots = getSlots(classroom).map(t => parseRange(t)).filter(Boolean);
     const newFloor = getFloor(classroom.room);
+
     let bestWorker = null;
     let bestScore = Infinity;
 
     for (const worker of pool) {
-      const currentCount = counts.get(worker.id);
+      const prevWindow = commonWindows.get(worker.id);
+      const newWindow = intersectRangeLists(prevWindow, classroomSlots);
+      // 교집합이 유지되면 1회 이동 보장
+      const keepsOneTrip = newWindow.length > 0;
 
-      const simState = state.map(c =>
-        c.id === classroom.id ? { ...c, inspectorId: worker.id } : c
-      );
-      // 우선순위 1: 이동 횟수 최소화, 우선순위 2: 층수 분산 최소화, 타이브레이킹: 현재 배정 수
-      const trips = countTrips(simState, worker.id);
-      const floors = getWorkerFloors(state, worker.id);
+      const currentCount = counts.get(worker.id);
+      const floors = getWorkerFloors([...state.values()], worker.id);
       if (newFloor !== null) floors.add(newFloor);
       const floorCount = floors.size;
       const floorPenalty = floorCount > 3 ? 500 : (floorCount - 1) * 12;
-      const score = trips * 100 + floorPenalty + currentCount * 1;
+
+      // 1회 이동 유지가 최우선 (10000점 격차)
+      const tripPenalty = keepsOneTrip ? 0 : 10000;
+      const score = tripPenalty + floorPenalty + currentCount;
 
       if (score < bestScore) {
         bestScore = score;
@@ -175,13 +183,69 @@ export function autoAssign(classrooms, workers) {
     }
 
     if (bestWorker) {
-      state = state.map(c =>
-        c.id === classroom.id ? { ...c, inspectorId: bestWorker.id } : c
-      );
+      state.set(classroom.id, { ...state.get(classroom.id), inspectorId: bestWorker.id });
+
+      const prevWindow = commonWindows.get(bestWorker.id);
+      const newWindow = intersectRangeLists(prevWindow, classroomSlots);
+      if (newWindow.length > 0) {
+        // 1회 이동 유지: 공통 창 좁힘
+        commonWindows.set(bestWorker.id, newWindow);
+      } else {
+        // 불가피한 2회 이동: 이 강의실 슬롯 ∩ 근무시간으로 새 창 시작
+        const workerWork = bestWorker.workTimes.map(t => parseRange(t)).filter(Boolean);
+        const reset = intersectRangeLists(workerWork, classroomSlots);
+        commonWindows.set(bestWorker.id, reset.length > 0 ? reset : workerWork);
+      }
     }
   }
 
-  const stateMap = new Map(state.map(c => [c.id, c]));
+  return [...state.values()];
+}
+
+
+export function autoAssign(classrooms, workers) {
+  if (!workers.length || !classrooms.length) return classrooms;
+
+  const assignable = classrooms.filter(c => getSlots(c).length > 0);
+  if (!assignable.length) return classrooms;
+
+  // 기본 정렬: 배정 가능 근무자 수 적은 강의실 우선 (제약 전파)
+  const eligibleCount = c => workers.filter(w => canInspect(w, c)).length;
+  const baseSorted = [...assignable].sort((a, b) => eligibleCount(a) - eligibleCount(b));
+
+  // 같은 우선순위 그룹 내 셔플용 그룹핑
+  function shuffledOrder() {
+    const groups = new Map();
+    for (const c of baseSorted) {
+      const k = eligibleCount(c);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(c);
+    }
+    return [...groups.keys()].sort((a, b) => a - b)
+      .flatMap(k => [...groups.get(k)].sort(() => Math.random() - 0.5));
+  }
+
+  function totalTrips(state) {
+    return workers.reduce((sum, w) => sum + countTrips(state, w.id), 0);
+  }
+
+  const RESTARTS = 12;
+  let bestState = null;
+  let bestTrips = Infinity;
+
+  for (let run = 0; run < RESTARTS; run++) {
+    const order = run === 0 ? baseSorted : shuffledOrder();
+    const result = greedyRun(order, workers, run > 0);
+    const trips = totalTrips(result);
+    if (trips < bestTrips) {
+      bestTrips = trips;
+      bestState = result;
+    }
+    // 모든 근무자가 1회 이동이면 완벽 → 조기 종료
+    if (bestTrips <= workers.filter(w => result.some(c => c.inspectorId === w.id)).length) break;
+  }
+
+  const stateMap = new Map(bestState.map(c => [c.id, c]));
   return classrooms.map(c => stateMap.get(c.id) || c);
 }
 
