@@ -133,14 +133,13 @@ export default function App() {
   }, []);
 
   // ===== AUTO ASSIGN =====
-  const handleAutoAssign = useCallback(() => {
+  const runAssign = useCallback((forceShuffle = false) => {
     setClassrooms((prev) => {
       const enriched = prev.map((c) => {
         const effectiveSlots = computeEffectiveSlots(c, events);
         return effectiveSlots === c.timeSlots ? c : { ...c, effectiveSlots };
       });
-      const result = autoAssign(enriched, workers);
-      // strip effectiveSlots from result, keep only the base classroom data + inspectorId
+      const result = autoAssign(enriched, workers, { forceShuffle });
       const stripped = result.map(({ effectiveSlots: _, ...c }) => c);
       const assigned = stripped.filter((c) => c.inspectorId).length;
       const unassigned = stripped.filter(
@@ -158,6 +157,9 @@ export default function App() {
     });
     setSelectedWorkerId(null);
   }, [workers, events, showStatus]);
+
+  const handleAutoAssign = useCallback(() => runAssign(false), [runAssign]);
+  const handleReAssign = useCallback(() => runAssign(true), [runAssign]);
 
   // ===== INSPECTOR CLICK =====
   const handleInspectorClick = useCallback(
@@ -217,6 +219,7 @@ export default function App() {
           onToggleManualMode={() => setManualMode((v) => !v)}
           onInspectorClick={handleInspectorClick}
           onAutoAssign={handleAutoAssign}
+          onReAssign={handleReAssign}
           onUpdateClassroom={updateClassroom}
           onAddEvent={addEvent}
           onRemoveEvent={removeEvent}

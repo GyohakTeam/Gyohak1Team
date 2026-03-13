@@ -170,7 +170,12 @@ function greedyRun(order, workers, randomizePool) {
       const floors = getWorkerFloors([...state.values()], worker.id);
       if (newFloor !== null) floors.add(newFloor);
       const floorCount = floors.size;
-      const floorPenalty = floorCount > 3 ? 500 : (floorCount - 1) * 12;
+      const floorPenalty =
+        floorCount <= 1 ? 0 :
+        floorCount === 2 ? 50 :
+        floorCount === 3 ? 3500 :
+        floorCount === 4 ? 6000 :
+        8500;
 
       // 1회 이동 유지가 최우선 (10000점 격차)
       const tripPenalty = keepsOneTrip ? 0 : 10000;
@@ -203,7 +208,7 @@ function greedyRun(order, workers, randomizePool) {
 }
 
 
-export function autoAssign(classrooms, workers) {
+export function autoAssign(classrooms, workers, { forceShuffle = false } = {}) {
   if (!workers.length || !classrooms.length) return classrooms;
 
   const assignable = classrooms.filter(c => getSlots(c).length > 0);
@@ -234,8 +239,8 @@ export function autoAssign(classrooms, workers) {
   let bestTrips = Infinity;
 
   for (let run = 0; run < RESTARTS; run++) {
-    const order = run === 0 ? baseSorted : shuffledOrder();
-    const result = greedyRun(order, workers, run > 0);
+    const order = (!forceShuffle && run === 0) ? baseSorted : shuffledOrder();
+    const result = greedyRun(order, workers, forceShuffle || run > 0);
     const trips = totalTrips(result);
     if (trips < bestTrips) {
       bestTrips = trips;

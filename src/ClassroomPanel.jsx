@@ -23,6 +23,7 @@ export default function ClassroomPanel({
   onSwitchToPaste,
   onInspectorClick,
   onAutoAssign,
+  onReAssign,
   onUpdateClassroom,
   onAddEvent,
   onRemoveEvent,
@@ -176,6 +177,11 @@ export default function ClassroomPanel({
               {workers.length > 0 && (
                 <button className="reload-btn" onClick={onAutoAssign}>
                   ⚡ 자동 배정
+                </button>
+              )}
+              {classrooms.some((c) => c.inspectorId) && (
+                <button className="reload-btn" onClick={onReAssign}>
+                  🔀 다시 배정
                 </button>
               )}
               <button
