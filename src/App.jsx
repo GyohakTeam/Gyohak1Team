@@ -238,6 +238,7 @@ export default function App() {
           showStatus={showStatus}
         />
       </div>
+      <div className="app-version">v0.1.0</div>
     </>
   );
 }

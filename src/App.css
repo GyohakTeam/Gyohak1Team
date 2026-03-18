@@ -21,6 +21,17 @@ body {
   color: var(--black);
 }
 
+/* ===== VERSION ===== */
+.app-version {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 11px;
+  color: var(--gray);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* ===== HEADER ===== */
 .app-header {
   background: var(--black);

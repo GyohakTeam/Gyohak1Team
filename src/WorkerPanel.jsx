@@ -187,7 +187,7 @@ export default function WorkerPanel({
                   const myRooms = classrooms
                     .filter((c) => c.inspectorId === w.id)
                     .map((c) => c.room);
-                  const trips = countTrips(classrooms, w.id);
+                  const trips = countTrips(classrooms, w.id, workers);
                   const floors = [...getWorkerFloors(classrooms, w.id)].sort();
 
                   const color = getPersonColor(w.name);
