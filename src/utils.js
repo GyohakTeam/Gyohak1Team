@@ -146,17 +146,19 @@ export function getWorkerFloors(classrooms, workerId) {
 
 // ===== 스코어 & 로컬 서치 =====
 
-// 조건1: 1회이동 위반자 수, 조건2: 층수 2초과 위반자 수, 조건3: 총이동 횟수
+// 조건1: 1회이동 위반자 수, 조건2: 층수 2초과 위반자 수, 조건3: 최대-최소 배정 수 차이, 조건4: 총이동 횟수
 function scoreState(state, workers) {
   let tripsOver1 = 0, floorsOver2 = 0, totalTrips = 0;
-  for (const w of workers) {
+  const loads = workers.map(w => {
     const trips = countTrips(state, w.id, workers);
     const floors = getWorkerFloors(state, w.id).size;
     if (trips > 1) tripsOver1++;
     if (floors > 2) floorsOver2++;
     totalTrips += trips;
-  }
-  return [tripsOver1, floorsOver2, totalTrips];
+    return state.filter(c => c.inspectorId === w.id).length;
+  });
+  const imbalance = Math.max(...loads) - Math.min(...loads);
+  return [tripsOver1, floorsOver2, imbalance, totalTrips];
 }
 
 function scoreBetter(a, b) {
@@ -275,9 +277,9 @@ function greedyRun(order, workers, randomizePool) {
         floorCount === 4 ? 7500 :
         9000;
 
-      // 1회 이동 유지가 최우선 (10000점 격차)
+      // 1회 이동 유지가 최우선 (10000점 격차), 균등 배분은 floor2 패널티보다 강하게
       const tripPenalty = keepsOneTrip ? 0 : 10000;
-      const score = tripPenalty + floorPenalty + currentCount;
+      const score = tripPenalty + floorPenalty + currentCount * 200;
 
       if (score < bestScore) {
         bestScore = score;
