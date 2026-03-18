@@ -11,6 +11,7 @@ export default function App() {
   const [manualMode, setManualMode] = useState(false);
   const [mode, setMode] = useState("paste"); // 'paste' | 'table'
   const [status, setStatus] = useState({ text: "", type: "" });
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [events, setEvents] = useState([]);
@@ -133,30 +134,39 @@ export default function App() {
   }, []);
 
   // ===== AUTO ASSIGN =====
-  const runAssign = useCallback((forceShuffle = false) => {
-    setClassrooms((prev) => {
-      const enriched = prev.map((c) => {
-        const effectiveSlots = computeEffectiveSlots(c, events);
-        return effectiveSlots === c.timeSlots ? c : { ...c, effectiveSlots };
-      });
-      const result = autoAssign(enriched, workers, { forceShuffle });
-      const stripped = result.map(({ effectiveSlots: _, ...c }) => c);
-      const assigned = stripped.filter((c) => c.inspectorId).length;
-      const unassigned = stripped.filter(
-        (c) => c.timeSlots.length > 0 && !c.inspectorId,
-      ).length;
-      if (unassigned > 0) {
-        showStatus(
-          `자동 배정 완료: ${assigned}개 배정, ${unassigned}개 미배정 (근무시간 불일치)`,
-          "warn",
-        );
-      } else {
-        showStatus(`자동 배정 완료: ${assigned}개 전체 배정`, "ok");
-      }
-      return stripped;
-    });
-    setSelectedWorkerId(null);
-  }, [workers, events, showStatus]);
+  const runAssign = useCallback(
+    (forceShuffle = false) => {
+      setIsAssigning(true);
+      setSelectedWorkerId(null);
+      setTimeout(() => {
+        setClassrooms((prev) => {
+          const enriched = prev.map((c) => {
+            const effectiveSlots = computeEffectiveSlots(c, events);
+            return effectiveSlots === c.timeSlots
+              ? c
+              : { ...c, effectiveSlots };
+          });
+          const result = autoAssign(enriched, workers, { forceShuffle });
+          const stripped = result.map(({ effectiveSlots: _, ...c }) => c);
+          const assigned = stripped.filter((c) => c.inspectorId).length;
+          const unassigned = stripped.filter(
+            (c) => c.timeSlots.length > 0 && !c.inspectorId,
+          ).length;
+          if (unassigned > 0) {
+            showStatus(
+              `자동 배정 완료: ${assigned}개 배정, ${unassigned}개 미배정 (근무시간 불일치)`,
+              "warn",
+            );
+          } else {
+            showStatus(`자동 배정 완료: ${assigned}개 전체 배정`, "ok");
+          }
+          return stripped;
+        });
+        setIsAssigning(false);
+      }, 30);
+    },
+    [workers, events, showStatus],
+  );
 
   const handleAutoAssign = useCallback(() => runAssign(false), [runAssign]);
   const handleReAssign = useCallback(() => runAssign(true), [runAssign]);
@@ -220,6 +230,7 @@ export default function App() {
           onInspectorClick={handleInspectorClick}
           onAutoAssign={handleAutoAssign}
           onReAssign={handleReAssign}
+          isAssigning={isAssigning}
           onUpdateClassroom={updateClassroom}
           onAddEvent={addEvent}
           onRemoveEvent={removeEvent}
@@ -238,7 +249,7 @@ export default function App() {
           showStatus={showStatus}
         />
       </div>
-      <div className="app-version">v0.1.0</div>
+      <div className="app-version">v0.2.0</div>
     </>
   );
 }

@@ -27,6 +27,7 @@ export default function ClassroomPanel({
   onUpdateClassroom,
   onAddEvent,
   onRemoveEvent,
+  isAssigning,
 }) {
   const textareaRef = useRef(null);
   const [editingId, setEditingId] = useState(null);
@@ -175,12 +176,12 @@ export default function ClassroomPanel({
                 </button>
               )}
               {workers.length > 0 && (
-                <button className="reload-btn" onClick={onAutoAssign}>
-                  ⚡ 자동 배정
+                <button className="reload-btn" onClick={onAutoAssign} disabled={isAssigning}>
+                  {isAssigning ? "⏳ 배정 중..." : "⚡ 자동 배정"}
                 </button>
               )}
               {classrooms.some((c) => c.inspectorId) && (
-                <button className="reload-btn" onClick={onReAssign}>
+                <button className="reload-btn" onClick={onReAssign} disabled={isAssigning}>
                   🔀 다시 배정
                 </button>
               )}
@@ -236,7 +237,18 @@ export default function ClassroomPanel({
             </div>
           )}
 
-          <div className="table-wrap">
+          <div className="table-wrap" style={{ position: "relative" }}>
+            {isAssigning && (
+              <div style={{
+                position: "absolute", inset: 0, zIndex: 10,
+                background: "rgba(255,255,255,0.7)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 15, fontWeight: 600, color: "#555",
+                borderRadius: 6,
+              }}>
+                ⏳ 배정 계산 중...
+              </div>
+            )}
             <table>
               <thead>
                 <tr>

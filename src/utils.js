@@ -146,19 +146,22 @@ export function getWorkerFloors(classrooms, workerId) {
 
 // ===== 스코어 & 로컬 서치 =====
 
-// 조건1: 1회이동 위반자 수, 조건2: 층수 2초과 위반자 수, 조건3: 최대-최소 배정 수 차이, 조건4: 총이동 횟수
-function scoreState(state, workers) {
-  let tripsOver1 = 0, floorsOver2 = 0, totalTrips = 0;
+// 조건1: 1회이동 위반자 수, 조건2: 최대 배정 수 초과 위반자 수, 조건3: 층수 초과 위반자 수, 조건4: 최대-최소 배정 수 차이, 조건5: 총이동 횟수
+function scoreState(state, workers, maxLoad, maxFloors) {
+  let tripsOver1 = 0, loadViolations = 0, floorViolations = 0, totalTrips = 0;
   const loads = workers.map(w => {
     const trips = countTrips(state, w.id, workers);
     const floors = getWorkerFloors(state, w.id).size;
+    const load = state.filter(c => c.inspectorId === w.id).length;
     if (trips > 1) tripsOver1++;
-    if (floors > 2) floorsOver2++;
+    if (maxLoad != null && load > maxLoad) loadViolations++;
+    if (maxFloors != null && floors > maxFloors) floorViolations++;
     totalTrips += trips;
-    return state.filter(c => c.inspectorId === w.id).length;
+    return load;
   });
+  // 연속값으로 써야 9→8→7 식으로 한 단계씩 개선을 인식할 수 있음
   const imbalance = Math.max(...loads) - Math.min(...loads);
-  return [tripsOver1, floorsOver2, imbalance, totalTrips];
+  return [tripsOver1, loadViolations, floorViolations, imbalance, totalTrips];
 }
 
 function scoreBetter(a, b) {
@@ -170,16 +173,16 @@ function scoreBetter(a, b) {
 }
 
 // 스왑/이동으로 스코어 개선 (로컬 서치)
-function localSearch(classrooms, workers) {
+function localSearch(classrooms, workers, maxLoad, maxFloors) {
   let state = classrooms.map(c => ({ ...c }));
-  let best = scoreState(state, workers);
+  let best = scoreState(state, workers, maxLoad, maxFloors);
 
   let improved = true;
   let iter = 0;
   const MAX_ITERS = 300;
 
   while (improved && iter++ < MAX_ITERS) {
-    if (best[0] === 0 && best[1] === 0) break;
+    if (best[0] === 0 && best[1] === 0 && best[2] === 0 && best[3] === 0) break;
     improved = false;
     const assigned = state.filter(c => c.inspectorId);
 
@@ -195,7 +198,7 @@ function localSearch(classrooms, workers) {
           c.id === ci.id ? { ...c, inspectorId: cj.inspectorId } :
           c.id === cj.id ? { ...c, inspectorId: ci.inspectorId } : c
         );
-        const s = scoreState(newState, workers);
+        const s = scoreState(newState, workers, maxLoad, maxFloors);
         if (scoreBetter(s, best)) {
           state = newState; best = s; improved = true;
           break swapLoop;
@@ -207,12 +210,21 @@ function localSearch(classrooms, workers) {
 
     // 이동: 강의실을 다른 근무자에게 재배정
     moveLoop: for (const ci of assigned) {
+      const ciFloor = getFloor(ci.room);
       for (const wj of workers) {
         if (wj.id === ci.inspectorId || !canInspect(wj, ci)) continue;
+        // maxLoad 상한선 체크
+        const wjLoad = state.filter(c => c.inspectorId === wj.id).length;
+        if (maxLoad != null && wjLoad >= maxLoad) continue;
+        // maxFloors 상한선 체크
+        if (maxFloors != null && ciFloor !== null) {
+          const wjFloors = getWorkerFloors(state, wj.id);
+          if (!wjFloors.has(ciFloor) && wjFloors.size >= maxFloors) continue;
+        }
         const newState = state.map(c =>
           c.id === ci.id ? { ...c, inspectorId: wj.id } : c
         );
-        const s = scoreState(newState, workers);
+        const s = scoreState(newState, workers, maxLoad, maxFloors);
         if (scoreBetter(s, best)) {
           state = newState; best = s; improved = true;
           break moveLoop;
@@ -229,7 +241,7 @@ function localSearch(classrooms, workers) {
 // 한 run의 그리디 배정.
 // commonWindow 기반: 근무자별 "현재까지 배정된 강의실들의 공통 시간 교집합 ∩ 근무시간"을 추적.
 // 새 강의실을 배정할 때 교집합이 유지되면(1회 이동) 우선, 비면 10000점 패널티.
-function greedyRun(order, workers, randomizePool) {
+function greedyRun(order, workers, randomizePool, maxLoad, maxFloors) {
   // 초기 공통 창 = 퇴근 EARLY_FINISH_MIN분 전까지의 유효 근무 범위
   const commonWindows = new Map(
     workers.map(w => [w.id, w.workTimes.map(t => getEffectiveWorkRange(t)).filter(Boolean)])
@@ -238,16 +250,32 @@ function greedyRun(order, workers, randomizePool) {
   let state = new Map(order.map(c => [c.id, { ...c, inspectorId: null }]));
 
   for (const classroom of order) {
-    const eligible = workers.filter(w => canInspect(w, classroom));
-    if (!eligible.length) continue;
+    const allEligible = workers.filter(w => canInspect(w, classroom));
+    if (!allEligible.length) continue;
 
     const counts = new Map(workers.map(w => [w.id, 0]));
     for (const c of state.values()) {
       if (c.inspectorId) counts.set(c.inspectorId, (counts.get(c.inspectorId) || 0) + 1);
     }
-    const globalMin = Math.min(...counts.values());
-    const candidates = eligible.filter(w => counts.get(w.id) <= globalMin + 1);
-    let pool = candidates.length > 0 ? candidates : eligible;
+
+    const newFloor = getFloor(classroom.room);
+
+    // 상한선(배정 수, 층수) 미만인 근무자 우선; 모두 초과하면 폴백
+    const belowCap = allEligible.filter(w => {
+      if (maxLoad != null && counts.get(w.id) >= maxLoad) return false;
+      if (maxFloors != null && newFloor !== null) {
+        const wFloors = getWorkerFloors([...state.values()], w.id);
+        if (!wFloors.has(newFloor) && wFloors.size >= maxFloors) return false;
+      }
+      return true;
+    });
+    const eligible = belowCap.length > 0 ? belowCap : allEligible;
+
+    const globalMin = Math.min(...eligible.map(w => counts.get(w.id)));
+    // strict(최소치만) → lax(최소+1) → 전체 eligible 순으로 폴백
+    const strictPool = eligible.filter(w => counts.get(w.id) <= globalMin);
+    const laxPool = eligible.filter(w => counts.get(w.id) <= globalMin + 1);
+    let pool = strictPool.length > 0 ? strictPool : laxPool.length > 0 ? laxPool : eligible;
 
     // 다양성을 위해 풀 셔플 (multi-restart 시)
     if (randomizePool) {
@@ -255,7 +283,6 @@ function greedyRun(order, workers, randomizePool) {
     }
 
     const classroomSlots = getSlots(classroom).map(t => parseRange(t)).filter(Boolean);
-    const newFloor = getFloor(classroom.room);
 
     let bestWorker = null;
     let bestScore = Infinity;
@@ -330,21 +357,25 @@ export function autoAssign(classrooms, workers, { forceShuffle = false } = {}) {
       .flatMap(k => [...groups.get(k)].sort(() => Math.random() - 0.5));
   }
 
+  // 상한선: 배정 수(평균 올림 + 1), 층수(3개 이하)
+  const maxLoad = Math.ceil(assignable.length / workers.length) + 1;
+  const maxFloors = 3;
+
   const RESTARTS = 20;
   let bestState = null;
   let bestScore = null;
 
   for (let run = 0; run < RESTARTS; run++) {
     const order = (!forceShuffle && run === 0) ? baseSorted : shuffledOrder();
-    const greedy = greedyRun(order, workers, forceShuffle || run > 0);
-    const optimized = localSearch(greedy, workers);
-    const score = scoreState(optimized, workers);
+    const greedy = greedyRun(order, workers, forceShuffle || run > 0, maxLoad, maxFloors);
+    const optimized = localSearch(greedy, workers, maxLoad, maxFloors);
+    const score = scoreState(optimized, workers, maxLoad, maxFloors);
     if (!bestScore || scoreBetter(score, bestScore)) {
       bestScore = score;
       bestState = optimized;
     }
-    // 조건1·2 모두 달성이면 조기 종료
-    if (bestScore[0] === 0 && bestScore[1] === 0) break;
+    // 조건1·2·3·4 모두 달성이면 조기 종료
+    if (bestScore[0] === 0 && bestScore[1] === 0 && bestScore[2] === 0 && bestScore[3] === 0) break;
   }
 
   const stateMap = new Map(bestState.map(c => [c.id, c]));
