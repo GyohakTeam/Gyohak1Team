@@ -160,7 +160,7 @@ export default function ClassroomPanel({
 
       {/* ===== TABLE MODE ===== */}
       {mode === "table" && (
-        <div className="mode-wrap">
+        <div className="mode-wrap" style={{ position: "relative" }}>
           <div className="panel-title">
             강의실 점검 시간표
             <div style={{ display: "flex", gap: 6 }}>
@@ -237,18 +237,18 @@ export default function ClassroomPanel({
             </div>
           )}
 
-          <div className="table-wrap" style={{ position: "relative" }}>
-            {isAssigning && (
-              <div style={{
-                position: "absolute", inset: 0, zIndex: 10,
-                background: "rgba(255,255,255,0.7)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 15, fontWeight: 600, color: "#555",
-                borderRadius: 6,
-              }}>
-                ⏳ 배정 계산 중...
-              </div>
-            )}
+          {isAssigning && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 10,
+              background: "rgba(255,255,255,0.7)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 15, fontWeight: 600, color: "#555",
+              borderRadius: 6,
+            }}>
+              ⏳ 배정 계산 중...
+            </div>
+          )}
+          <div className="table-wrap">
             <table>
               <thead>
                 <tr>

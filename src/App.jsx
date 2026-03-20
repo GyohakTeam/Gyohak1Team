@@ -12,6 +12,7 @@ export default function App() {
   const [mode, setMode] = useState("paste"); // 'paste' | 'table'
   const [status, setStatus] = useState({ text: "", type: "" });
   const [isAssigning, setIsAssigning] = useState(false);
+  const [showReassignBanner, setShowReassignBanner] = useState(false);
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [events, setEvents] = useState([]);
@@ -163,6 +164,7 @@ export default function App() {
           return stripped;
         });
         setIsAssigning(false);
+        setShowReassignBanner(true);
       }, 30);
     },
     [workers, events, showStatus],
@@ -247,9 +249,12 @@ export default function App() {
           onSelectWorker={selectWorker}
           onLoadDay={loadDay}
           showStatus={showStatus}
+          showReassignBanner={showReassignBanner}
+          onReAssign={handleReAssign}
+          onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v0.2.0</div>
+      <div className="app-version">v0.3.0</div>
     </>
   );
 }
