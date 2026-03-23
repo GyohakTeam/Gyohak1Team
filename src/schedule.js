@@ -5,6 +5,8 @@
 
 // 3월 4주차
 
+export const SCHEDULE_VERSION = "2026-03-23";
+
 export const SCHEDULE = {
   월: [
     { name: "호태", workTimes: ["08:30-12:00"] },

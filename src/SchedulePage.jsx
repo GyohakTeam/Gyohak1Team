@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { DAYS, getPersonColor } from "./schedule";
+import { DAYS, getPersonColor, SCHEDULE_VERSION } from "./schedule";
 import { toMin } from "./utils";
 
 // 08:30 ~ 22:00, 30분 단위
@@ -27,12 +27,16 @@ function rangesToWorkTimes(ranges) {
 }
 
 function addSlot(ranges, slotMin) {
-  const s = slotMin, e = slotMin + 30;
+  const s = slotMin,
+    e = slotMin + 30;
   const next = [...ranges, [s, e]].sort((a, b) => a[0] - b[0]);
   const merged = [];
   for (const r of next) {
     if (merged.length && r[0] <= merged[merged.length - 1][1]) {
-      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], r[1]);
+      merged[merged.length - 1][1] = Math.max(
+        merged[merged.length - 1][1],
+        r[1],
+      );
     } else {
       merged.push([...r]);
     }
@@ -41,7 +45,8 @@ function addSlot(ranges, slotMin) {
 }
 
 function removeSlot(ranges, slotMin) {
-  const s = slotMin, e = slotMin + 30;
+  const s = slotMin,
+    e = slotMin + 30;
   const result = [];
   for (const [rs, re] of ranges) {
     if (re <= s || rs >= e) {
@@ -76,15 +81,20 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
           color: getPersonColor(w.name),
         })),
       })),
-    [schedule]
+    [schedule],
   );
 
   function handleCellClick(day, workerIdx, slotMin, working) {
     const newSchedule = { ...schedule };
-    const workers = newSchedule[day].map((w) => ({ ...w, workTimes: [...w.workTimes] }));
+    const workers = newSchedule[day].map((w) => ({
+      ...w,
+      workTimes: [...w.workTimes],
+    }));
     const worker = workers[workerIdx];
     const ranges = workTimesToRanges(worker.workTimes);
-    const newRanges = working ? removeSlot(ranges, slotMin) : addSlot(ranges, slotMin);
+    const newRanges = working
+      ? removeSlot(ranges, slotMin)
+      : addSlot(ranges, slotMin);
     worker.workTimes = rangesToWorkTimes(newRanges);
     newSchedule[day] = workers;
     onScheduleChange(newSchedule);
@@ -92,7 +102,7 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
   }
 
   function handleSave() {
-    localStorage.setItem("gyohak-schedule", JSON.stringify(schedule));
+    localStorage.setItem("gyohak-schedule", JSON.stringify({ version: SCHEDULE_VERSION, data: schedule }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -147,22 +157,38 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
                   >
                     {w.name}
                   </th>
-                ))
+                )),
               )}
             </tr>
           </thead>
           <tbody>
             {TIME_SLOTS.map((slotMin) => (
-              <tr key={slotMin} className="sch-row">
-                <td className="sch-time-td">
+              <tr
+                key={slotMin}
+                className="sch-row"
+                style={
+                  slotMin === 720 || slotMin === 1050
+                    ? { borderTop: "3px solid #333" }
+                    : undefined
+                }
+              >
+                <td
+                  className="sch-time-td"
+                  style={
+                    slotMin === 720 || slotMin === 1050
+                      ? { borderTop: "3px solid #333" }
+                      : undefined
+                  }
+                >
                   {minToTime(slotMin)}~{minToTime(slotMin + 30)}
                 </td>
                 {dayData.map(({ day, workers }) =>
                   workers.map((w, i) => {
                     const ranges = workTimesToRanges(w.workTimes);
                     const working = ranges.some(
-                      ([s, e]) => s < slotMin + 30 && e > slotMin
+                      ([s, e]) => s < slotMin + 30 && e > slotMin,
                     );
+                    const thickTop = slotMin === 720 || slotMin === 1050;
                     return (
                       <td
                         key={day + w.name + i}
@@ -171,10 +197,13 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
                           backgroundColor: working ? w.color : "#f5f5f5",
                           borderLeft:
                             i === 0 ? "3px solid #888" : "1px solid #ddd",
+                          borderTop: thickTop ? "3px solid #333" : undefined,
                           cursor: "pointer",
                           color: working ? "#111" : "transparent",
                         }}
-                        onClick={() => handleCellClick(day, i, slotMin, working)}
+                        onClick={() =>
+                          handleCellClick(day, i, slotMin, working)
+                        }
                         title={
                           working
                             ? `${w.name} ${minToTime(slotMin)}~${minToTime(slotMin + 30)} 제거`
@@ -184,7 +213,7 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
                         {w.name}
                       </td>
                     );
-                  })
+                  }),
                 )}
               </tr>
             ))}

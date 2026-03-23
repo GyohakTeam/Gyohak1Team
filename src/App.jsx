@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { parseData, uid, autoAssign, computeEffectiveSlots } from "./utils";
-import { SCHEDULE, DAYS } from "./schedule";
+import { SCHEDULE, DAYS, SCHEDULE_VERSION } from "./schedule";
 import ClassroomPanel from "./ClassroomPanel";
 import WorkerPanel from "./WorkerPanel";
 import SchedulePage from "./SchedulePage";
@@ -8,7 +8,10 @@ import SchedulePage from "./SchedulePage";
 function initSchedule() {
   try {
     const saved = localStorage.getItem("gyohak-schedule");
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.version === SCHEDULE_VERSION) return parsed.data;
+    }
   } catch {}
   // SCHEDULE 깊은 복사
   const clone = {};
@@ -289,7 +292,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.1.0</div>
+      <div className="app-version">v1.2.0</div>
     </>
   );
 }
