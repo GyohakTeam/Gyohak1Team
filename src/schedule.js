@@ -2,15 +2,20 @@
  * 요일별 출근자 시간표
  * workTimes: 최대 2개 근무 시간대 (분리 근무 지원)
  */
+
+// 3월 4주차
+
 export const SCHEDULE = {
   월: [
-    { name: "호태", workTimes: ["08:30-14:00"] },
-    { name: "민정", workTimes: ["08:30-11:30", "17:30-22:00"] },
+    { name: "호태", workTimes: ["08:30-12:00"] },
+    { name: "정민", workTimes: ["09:00-17:00"] },
     { name: "예원", workTimes: ["08:30-14:30", "17:30-19:30"] },
-    { name: "지현", workTimes: ["11:00-14:30", "17:30-20:00"] },
-    { name: "정민", workTimes: ["09:00-17:30"] },
+    { name: "지현", workTimes: ["11:00-13:30", "17:30-20:00"] },
+    { name: "용호", workTimes: ["14:00-22:00"] },
     { name: "예빈", workTimes: ["12:00-17:30"] },
-    { name: "예인", workTimes: ["12:00-17:30"] },
+    { name: "예인", workTimes: ["12:00-15:30"] },
+    { name: "승환", workTimes: ["14:30-22:00"] },
+    { name: "민정", workTimes: ["17:30-22:00"] },
   ],
   화: [
     { name: "지현", workTimes: ["08:30-14:00"] },
@@ -72,6 +77,7 @@ export const PERSON_COLORS = {
   소은: "#FFC8BD",
   예인: "#33CC33",
   설진: "#D0CECE",
+  승환: "#840a8f",
 };
 
 export function getPersonColor(name) {
