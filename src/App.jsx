@@ -289,7 +289,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v0.3.0</div>
+      <div className="app-version">v1.0.0</div>
     </>
   );
 }
