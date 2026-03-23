@@ -1,10 +1,30 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { parseData, uid, autoAssign, computeEffectiveSlots } from "./utils";
-import { SCHEDULE } from "./schedule";
+import { SCHEDULE, DAYS } from "./schedule";
 import ClassroomPanel from "./ClassroomPanel";
 import WorkerPanel from "./WorkerPanel";
+import SchedulePage from "./SchedulePage";
+
+function initSchedule() {
+  try {
+    const saved = localStorage.getItem("gyohak-schedule");
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  // SCHEDULE 깊은 복사
+  const clone = {};
+  for (const day of DAYS) {
+    clone[day] = (SCHEDULE[day] || []).map((w) => ({
+      name: w.name,
+      workTimes: [...w.workTimes],
+    }));
+  }
+  return clone;
+}
 
 export default function App() {
+  const [page, setPage] = useState("main"); // 'main' | 'schedule'
+  const [schedule, setSchedule] = useState(initSchedule);
+
   const [classrooms, setClassrooms] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState(null);
@@ -28,6 +48,11 @@ export default function App() {
 
   const workerCounterRef = useRef(1);
   const statusTimer = useRef(null);
+
+  // ===== SCHEDULE CHANGE =====
+  const handleScheduleChange = useCallback((newSchedule) => {
+    setSchedule(newSchedule);
+  }, []);
 
   // ===== STATUS =====
   const showStatus = useCallback((text, type) => {
@@ -67,12 +92,11 @@ export default function App() {
     setStatus({ text: "", type: "" });
   }, []);
 
-  // ===== LOAD DAY =====
+  // ===== LOAD DAY (schedule 상태 사용) =====
   const loadDay = useCallback(
     (day) => {
-      const list = SCHEDULE[day];
+      const list = schedule[day];
       if (!list) return;
-      // 배정 초기화 후 해당 요일 근무자 일괄 등록
       setClassrooms((prev) => prev.map((c) => ({ ...c, inspectorId: null })));
       setSelectedWorkerId(null);
       workerCounterRef.current = 1;
@@ -88,7 +112,7 @@ export default function App() {
       setSelectedDay(day);
       showStatus(`${day}요일 출근자 ${list.length}명 등록됨`, "ok");
     },
-    [showStatus],
+    [showStatus, schedule],
   );
 
   // ===== WORKERS =====
@@ -180,13 +204,11 @@ export default function App() {
         const classroom = prev.find((c) => c.id === classroomId);
         if (!classroom) return prev;
 
-        // 선택된 근로자 없음 → 배정된 근로자 선택
         if (!selectedWorkerId) {
           if (classroom.inspectorId) setSelectedWorkerId(classroom.inspectorId);
           return prev;
         }
 
-        // 자기 칸 재클릭 → 해제
         if (classroom.inspectorId === selectedWorkerId) {
           setSelectedWorkerId(null);
           showStatus(`${classroom.room} 배정 해제`, "info");
@@ -195,7 +217,6 @@ export default function App() {
           );
         }
 
-        // 다른 사람 배정 칸 → 교체 (선택 유지)
         if (classroom.inspectorId) {
           showStatus(`${classroom.room} 배정 변경`, "info");
           return prev.map((c) =>
@@ -203,7 +224,6 @@ export default function App() {
           );
         }
 
-        // 빈 칸 → 추가 배정 (선택 유지)
         showStatus(`${classroom.room} 배정 완료`, "ok");
         return prev.map((c) =>
           c.id === classroomId ? { ...c, inspectorId: selectedWorkerId } : c,
@@ -213,9 +233,24 @@ export default function App() {
     [selectedWorkerId, showStatus],
   );
 
+  if (page === "schedule") {
+    return (
+      <SchedulePage
+        schedule={schedule}
+        onScheduleChange={handleScheduleChange}
+        onBack={() => setPage("main")}
+      />
+    );
+  }
+
   return (
     <>
-      <header className="app-header">강의실 점검 배정 시스템</header>
+      <header className="app-header">
+        강의실 점검 배정 시스템
+        <button className="sch-nav-btn" onClick={() => setPage("schedule")}>
+          📅 시간표 보기
+        </button>
+      </header>
       <div className="app-main">
         <ClassroomPanel
           classrooms={enrichedClassrooms}

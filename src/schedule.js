@@ -73,11 +73,11 @@ export const PERSON_COLORS = {
   예빈: "#FF99CC",
   가영: "#FFE699",
   지상: "#CCCCFF",
-  용호: "#D7E6F3",
+  용호: "#70ed91",
   소은: "#FFC8BD",
   예인: "#33CC33",
   설진: "#D0CECE",
-  승환: "#840a8f",
+  승환: "#863f8d",
 };
 
 export function getPersonColor(name) {
