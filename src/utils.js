@@ -299,7 +299,7 @@ function greedyRun(order, workers, randomizePool, maxLoad, maxFloors) {
       const floorCount = floors.size;
       const floorPenalty =
         floorCount <= 1 ? 0 :
-        floorCount === 2 ? 50 :
+        floorCount === 2 ? 1500 :
         floorCount === 3 ? 5000 :
         floorCount === 4 ? 7500 :
         9000;
@@ -359,7 +359,7 @@ export function autoAssign(classrooms, workers, { forceShuffle = false } = {}) {
 
   // 상한선: 배정 수(평균 올림 + 1), 층수(3개 이하)
   const maxLoad = Math.ceil(assignable.length / workers.length) + 1;
-  const maxFloors = 3;
+  const maxFloors = 2;
 
   const RESTARTS = 20;
   let bestState = null;
