@@ -144,9 +144,16 @@ export function getWorkerFloors(classrooms, workerId) {
   );
 }
 
+// 한 근무자의 담당 층 범위(최대층 - 최소층). 층이 1개 이하면 0.
+function workerFloorSpan(classrooms, workerId) {
+  const floors = [...getWorkerFloors(classrooms, workerId)];
+  if (floors.length <= 1) return 0;
+  return Math.max(...floors) - Math.min(...floors);
+}
+
 // ===== 스코어 & 로컬 서치 =====
 
-// 조건1: 1회이동 위반자 수, 조건2: 최대 배정 수 초과 위반자 수, 조건3: 층수 초과 위반자 수, 조건4: 최대-최소 배정 수 차이, 조건5: 총이동 횟수
+// 조건1: 1회이동 위반자 수, 조건2: 최대 배정 수 초과 위반자 수, 조건3: 층수 초과 위반자 수, 조건4: 최대-최소 배정 수 차이, 조건5: 층 범위 합산(인접 선호), 조건6: 총이동 횟수
 function scoreState(state, workers, maxLoad, maxFloors) {
   let tripsOver1 = 0, loadViolations = 0, floorViolations = 0, totalTrips = 0;
   const loads = workers.map(w => {
@@ -161,7 +168,9 @@ function scoreState(state, workers, maxLoad, maxFloors) {
   });
   // 연속값으로 써야 9→8→7 식으로 한 단계씩 개선을 인식할 수 있음
   const imbalance = Math.max(...loads) - Math.min(...loads);
-  return [tripsOver1, loadViolations, floorViolations, imbalance, totalTrips];
+  // 층 분산 최소화: 각 근무자의 담당 층 범위(최대-최소) 합산
+  const totalFloorSpan = workers.reduce((sum, w) => sum + workerFloorSpan(state, w.id), 0);
+  return [tripsOver1, loadViolations, floorViolations, imbalance, totalFloorSpan, totalTrips];
 }
 
 function scoreBetter(a, b) {
@@ -294,19 +303,32 @@ function greedyRun(order, workers, randomizePool, maxLoad, maxFloors) {
       const keepsOneTrip = newWindow.length > 0;
 
       const currentCount = counts.get(worker.id);
-      const floors = getWorkerFloors([...state.values()], worker.id);
-      if (newFloor !== null) floors.add(newFloor);
-      const floorCount = floors.size;
-      const floorPenalty =
-        floorCount <= 1 ? 0 :
-        floorCount === 2 ? 1500 :
-        floorCount === 3 ? 5000 :
-        floorCount === 4 ? 7500 :
-        9000;
+      const existingFloors = getWorkerFloors([...state.values()], worker.id);
+      const newFloors = new Set(existingFloors);
+      if (newFloor !== null) newFloors.add(newFloor);
+      const floorCount = newFloors.size;
 
-      // 1회 이동 유지가 최우선 (10000점 격차), 균등 배분은 floor2 패널티보다 강하게
+      // 인접 층 선호: 2번째 층 추가 시 거리에 따라 패널티 차등
+      let floorPenalty;
+      if (floorCount <= 1) {
+        floorPenalty = 0;
+      } else if (floorCount === 2) {
+        const isNew = newFloor !== null && !existingFloors.has(newFloor);
+        const dist = isNew && existingFloors.size > 0
+          ? Math.min(...[...existingFloors].map(f => Math.abs(f - newFloor)))
+          : 0;
+        floorPenalty = dist <= 1 ? 500 : dist <= 2 ? 1200 : 2500;
+      } else if (floorCount === 3) {
+        floorPenalty = 5000;
+      } else if (floorCount === 4) {
+        floorPenalty = 7500;
+      } else {
+        floorPenalty = 9000;
+      }
+
+      // 1회 이동 유지가 최우선 (10000점 격차), 균등 배분 강화 (200→500)
       const tripPenalty = keepsOneTrip ? 0 : 10000;
-      const score = tripPenalty + floorPenalty + currentCount * 200;
+      const score = tripPenalty + floorPenalty + currentCount * 500;
 
       if (score < bestScore) {
         bestScore = score;
