@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { canInspect, parseRange } from "./utils";
+import { canInspect } from "./utils";
 import { getPersonColor } from "./schedule";
+import EventModal from "./EventModal";
 
 const STATUS_BORDER = {
   ok: "#2e7d32",
@@ -32,9 +33,7 @@ export default function ClassroomPanel({
   const textareaRef = useRef(null);
   const [editingId, setEditingId] = useState(null);
   const [editSlots, setEditSlots] = useState(["", "", ""]);
-  const [showEventForm, setShowEventForm] = useState(false);
-  const [evtRoom, setEvtRoom] = useState("");
-  const [evtTime, setEvtTime] = useState("");
+  const [eventModalRoom, setEventModalRoom] = useState(null);
   const [copied, setCopied] = useState(false);
 
   const handleCopyTable = () => {
@@ -84,14 +83,6 @@ export default function ClassroomPanel({
   };
 
   const cancelEdit = () => setEditingId(null);
-
-  const handleAddEvent = () => {
-    if (!evtRoom.trim()) return;
-    if (!parseRange(evtTime)) return;
-    onAddEvent(evtRoom.trim(), evtTime.trim());
-    setEvtRoom("");
-    setEvtTime("");
-  };
 
   const selWorker = workers.find((w) => w.id === selectedWorkerId);
   const selColor = selWorker ? getPersonColor(selWorker.name) : null;
@@ -185,57 +176,11 @@ export default function ClassroomPanel({
                   🔀 다시 배정
                 </button>
               )}
-              <button
-                className="reload-btn"
-                onClick={() => setShowEventForm((v) => !v)}
-              >
-                {showEventForm ? "✕ 닫기" : "+ 행사추가"}
-              </button>
               <button className="reload-btn" onClick={onSwitchToPaste}>
                 ↩ 다시 불러오기
               </button>
             </div>
           </div>
-
-          {/* ===== EVENT FORM ===== */}
-          {showEventForm && (
-            <div className="event-panel">
-              <div className="event-form-row">
-                <input
-                  className="form-input"
-                  style={{ flex: "0 0 90px" }}
-                  placeholder="강의실 (예: 201호)"
-                  value={evtRoom}
-                  onChange={(e) => setEvtRoom(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddEvent()}
-                />
-                <input
-                  className="form-input"
-                  style={{ flex: 1 }}
-                  placeholder="행사 시간 (예: 10:00-12:00)"
-                  value={evtTime}
-                  onChange={(e) => setEvtTime(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddEvent()}
-                />
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={handleAddEvent}
-                >
-                  추가
-                </button>
-              </div>
-              {events.length > 0 && (
-                <div className="event-tags">
-                  {events.map((ev) => (
-                    <span key={ev.id} className="event-tag">
-                      {ev.room} {ev.time}
-                      <button onClick={() => onRemoveEvent(ev.id)}>✕</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {isAssigning && (
             <div style={{
@@ -360,6 +305,13 @@ export default function ClassroomPanel({
                               >
                                 ✏
                               </button>
+                              <button
+                                className="edit-slot-btn event-add-btn"
+                                onClick={() => setEventModalRoom(c.room)}
+                                title="행사 추가"
+                              >
+                                행사추가
+                              </button>
                               {roomEvents.map((ev) => (
                                 <span
                                   key={ev.id}
@@ -405,6 +357,15 @@ export default function ClassroomPanel({
             </table>
           </div>
         </div>
+      )}
+      {eventModalRoom !== null && (
+        <EventModal
+          room={eventModalRoom}
+          events={events}
+          onAdd={onAddEvent}
+          onRemove={onRemoveEvent}
+          onClose={() => setEventModalRoom(null)}
+        />
       )}
     </div>
   );

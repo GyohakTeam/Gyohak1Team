@@ -1,5 +1,11 @@
-import { useState, useRef, useCallback, useMemo } from "react";
-import { parseData, uid, autoAssign, computeEffectiveSlots } from "./utils";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import {
+  parseData,
+  uid,
+  autoAssign,
+  computeEffectiveSlots,
+  canInspect,
+} from "./utils";
 import { SCHEDULE, DAYS, SCHEDULE_VERSION } from "./schedule";
 import ClassroomPanel from "./ClassroomPanel";
 import WorkerPanel from "./WorkerPanel";
@@ -161,6 +167,46 @@ export default function App() {
     setEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
+  // 스케줄(시간표 페이지)이 바뀔 때 WorkerPanel의 workers 자동 동기화
+  useEffect(() => {
+    if (!selectedDay) return;
+    const scheduleList = schedule[selectedDay] || [];
+    setWorkers((prev) => {
+      const updated = scheduleList.map((sw) => {
+        const existing = prev.find((w) => w.name === sw.name);
+        if (existing) {
+          if (JSON.stringify(existing.workTimes) === JSON.stringify(sw.workTimes))
+            return existing; // 변경 없음 → 동일 참조 유지
+          return { ...existing, workTimes: sw.workTimes };
+        }
+        // 새로 추가된 근무자
+        return { id: uid(), number: workerCounterRef.current++, name: sw.name, workTimes: sw.workTimes };
+      });
+      const unchanged = updated.length === prev.length && updated.every((w, i) => w === prev[i]);
+      return unchanged ? prev : updated;
+    });
+  }, [schedule, selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 행사가 바뀔 때마다 기존 배정 재검토 → 더 이상 점검 불가한 강의실은 배정 해제
+  useEffect(() => {
+    setClassrooms((prev) => {
+      let changed = false;
+      const next = prev.map((c) => {
+        if (!c.inspectorId) return c;
+        const effective = computeEffectiveSlots(c, events);
+        const tempC =
+          effective === c.timeSlots ? c : { ...c, effectiveSlots: effective };
+        const w = workers.find((w) => w.id === c.inspectorId);
+        if (!w || !canInspect(w, tempC)) {
+          changed = true;
+          return { ...c, inspectorId: null };
+        }
+        return c;
+      });
+      return changed ? next : prev;
+    });
+  }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ===== AUTO ASSIGN =====
   const runAssign = useCallback(
     (forceShuffle = false) => {
@@ -292,7 +338,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.3.0</div>
+      <div className="app-version">v1.4.0</div>
     </>
   );
 }

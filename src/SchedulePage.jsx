@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DAYS, getPersonColor, SCHEDULE_VERSION } from "./schedule";
 import { toMin } from "./utils";
 
@@ -70,6 +70,53 @@ const DAY_HEADER = {
 
 export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
   const [saved, setSaved] = useState(false);
+  const [addingDay, setAddingDay] = useState(null);
+  const [dropdownPos, setDropdownPos] = useState(null);
+
+  // 전체 요일에 등록된 근무자 이름 풀
+  const allWorkerNames = useMemo(() => {
+    const names = new Set();
+    for (const day of DAYS)
+      for (const w of (schedule[day] || [])) names.add(w.name);
+    return [...names];
+  }, [schedule]);
+
+  function getAvailable(day) {
+    const existing = new Set((schedule[day] || []).map((w) => w.name));
+    return allWorkerNames.filter((n) => !existing.has(n));
+  }
+
+  function handleAddBtnClick(day, e) {
+    e.stopPropagation();
+    if (addingDay === day) { setAddingDay(null); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+    setAddingDay(day);
+  }
+
+  function handleAddWorker(day, name) {
+    // 다른 요일의 근무시간을 기본값으로 사용
+    let workTimes = ["09:00-18:00"];
+    for (const d of DAYS) {
+      if (d === day) continue;
+      const found = (schedule[d] || []).find((w) => w.name === name);
+      if (found?.workTimes?.length) { workTimes = [...found.workTimes]; break; }
+    }
+    onScheduleChange({ ...schedule, [day]: [...(schedule[day] || []), { name, workTimes }] });
+    setAddingDay(null);
+    setSaved(false);
+  }
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!addingDay) return;
+    function onDown(e) {
+      if (!e.target.closest(".sch-add-dropdown") && !e.target.closest(".sch-add-btn"))
+        setAddingDay(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [addingDay]);
 
   const dayData = useMemo(
     () =>
@@ -140,7 +187,16 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
                     borderLeft: "3px solid #555",
                   }}
                 >
-                  {day}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                    {day}
+                    <button
+                      className="sch-add-btn"
+                      onClick={(e) => handleAddBtnClick(day, e)}
+                      title={`${day}요일 근무자 추가`}
+                    >
+                      +
+                    </button>
+                  </div>
                 </th>
               ))}
             </tr>
@@ -220,6 +276,29 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
           </tbody>
         </table>
       </div>
+
+      {/* ===== 근무자 추가 드롭다운 ===== */}
+      {addingDay && dropdownPos && (
+        <div className="sch-add-dropdown" style={{ top: dropdownPos.top, left: dropdownPos.left }}>
+          {getAvailable(addingDay).length === 0 ? (
+            <div className="sch-add-empty">추가 가능한 근무자 없음</div>
+          ) : (
+            getAvailable(addingDay).map((name) => (
+              <button
+                key={name}
+                className="sch-add-option"
+                onClick={() => handleAddWorker(addingDay, name)}
+              >
+                <span
+                  className="color-dot"
+                  style={{ background: getPersonColor(name), width: 8, height: 8, marginRight: 6 }}
+                />
+                {name}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
