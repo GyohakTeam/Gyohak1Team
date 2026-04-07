@@ -175,14 +175,23 @@ export default function App() {
       const updated = scheduleList.map((sw) => {
         const existing = prev.find((w) => w.name === sw.name);
         if (existing) {
-          if (JSON.stringify(existing.workTimes) === JSON.stringify(sw.workTimes))
+          if (
+            JSON.stringify(existing.workTimes) === JSON.stringify(sw.workTimes)
+          )
             return existing; // 변경 없음 → 동일 참조 유지
           return { ...existing, workTimes: sw.workTimes };
         }
         // 새로 추가된 근무자
-        return { id: uid(), number: workerCounterRef.current++, name: sw.name, workTimes: sw.workTimes };
+        return {
+          id: uid(),
+          number: workerCounterRef.current++,
+          name: sw.name,
+          workTimes: sw.workTimes,
+        };
       });
-      const unchanged = updated.length === prev.length && updated.every((w, i) => w === prev[i]);
+      const unchanged =
+        updated.length === prev.length &&
+        updated.every((w, i) => w === prev[i]);
       return unchanged ? prev : updated;
     });
   }, [schedule, selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -338,7 +347,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.4.1</div>
+      <div className="app-version">v1.4.2</div>
     </>
   );
 }
