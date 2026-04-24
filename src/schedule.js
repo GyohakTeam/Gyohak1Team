@@ -16,7 +16,6 @@ export const SCHEDULE = {
     { name: "용호", workTimes: ["14:00-22:00"] },
     { name: "예빈", workTimes: ["12:00-17:30"] },
     { name: "예인", workTimes: ["12:00-15:30"] },
-    { name: "승환", workTimes: ["14:30-22:00"] },
     { name: "민정", workTimes: ["17:30-22:00"] },
   ],
   화: [

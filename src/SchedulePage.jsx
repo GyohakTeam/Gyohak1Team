@@ -68,7 +68,7 @@ const DAY_HEADER = {
   금: { bg: "#c0356e", text: "#fff" },
 };
 
-export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
+export default function SchedulePage({ schedule, onScheduleChange, onBack, onClearCache }) {
   const [saved, setSaved] = useState(false);
   const [addingDay, setAddingDay] = useState(null);
   const [dropdownPos, setDropdownPos] = useState(null);
@@ -143,7 +143,11 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
       ? removeSlot(ranges, slotMin)
       : addSlot(ranges, slotMin);
     worker.workTimes = rangesToWorkTimes(newRanges);
-    newSchedule[day] = workers;
+    // workTimes가 비면 해당 근무자를 당일 스케줄에서 제거
+    newSchedule[day] =
+      worker.workTimes.length === 0
+        ? workers.filter((_, i) => i !== workerIdx)
+        : workers;
     onScheduleChange(newSchedule);
     setSaved(false);
   }
@@ -152,6 +156,12 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
     localStorage.setItem("gyohak-schedule", JSON.stringify({ version: SCHEDULE_VERSION, data: schedule }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  }
+
+  function handleClearCache() {
+    if (window.confirm("저장된 시간표를 초기화하고 기본값으로 되돌릴까요?\n(현재 수정 내용이 모두 사라집니다)")) {
+      onClearCache();
+    }
   }
 
   return (
@@ -276,6 +286,11 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack }) {
           </tbody>
         </table>
       </div>
+
+      {/* ===== 캐시 초기화 버튼 (우하단 고정) ===== */}
+      <button className="sch-reset-btn" onClick={handleClearCache}>
+        🗑 시간표 캐시데이터 초기화
+      </button>
 
       {/* ===== 근무자 추가 드롭다운 ===== */}
       {addingDay && dropdownPos && (

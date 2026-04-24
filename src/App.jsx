@@ -57,10 +57,26 @@ export default function App() {
 
   const workerCounterRef = useRef(1);
   const statusTimer = useRef(null);
+  const pendingRemovedIdsRef = useRef([]);
+  const workersRef = useRef(workers);
+  useEffect(() => { workersRef.current = workers; }, [workers]);
 
   // ===== SCHEDULE CHANGE =====
   const handleScheduleChange = useCallback((newSchedule) => {
     setSchedule(newSchedule);
+  }, []);
+
+  // ===== CLEAR SCHEDULE CACHE =====
+  const clearScheduleCache = useCallback(() => {
+    localStorage.removeItem("gyohak-schedule");
+    const clone = {};
+    for (const day of DAYS) {
+      clone[day] = (SCHEDULE[day] || []).map((w) => ({
+        name: w.name,
+        workTimes: [...w.workTimes],
+      }));
+    }
+    setSchedule(clone);
   }, []);
 
   // ===== STATUS =====
@@ -142,10 +158,17 @@ export default function App() {
   }, []);
 
   const updateWorker = useCallback((id, workTimes) => {
-    setWorkers((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, workTimes } : w)),
-    );
-  }, []);
+    const worker = workersRef.current.find((w) => w.id === id);
+    setWorkers((prev) => prev.map((w) => (w.id === id ? { ...w, workTimes } : w)));
+    if (worker && selectedDay) {
+      setSchedule((prev) => ({
+        ...prev,
+        [selectedDay]: (prev[selectedDay] || []).map((sw) =>
+          sw.name === worker.name ? { ...sw, workTimes } : sw,
+        ),
+      }));
+    }
+  }, [selectedDay]);
 
   const selectWorker = useCallback((id) => {
     setSelectedWorkerId((prev) => (prev === id ? null : id));
@@ -167,6 +190,14 @@ export default function App() {
     setEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
+  // schedule 변경 시 localStorage 자동 저장
+  useEffect(() => {
+    localStorage.setItem(
+      "gyohak-schedule",
+      JSON.stringify({ version: SCHEDULE_VERSION, data: schedule }),
+    );
+  }, [schedule]);
+
   // 스케줄(시간표 페이지)이 바뀔 때 WorkerPanel의 workers 자동 동기화
   useEffect(() => {
     if (!selectedDay) return;
@@ -178,10 +209,9 @@ export default function App() {
           if (
             JSON.stringify(existing.workTimes) === JSON.stringify(sw.workTimes)
           )
-            return existing; // 변경 없음 → 동일 참조 유지
+            return existing;
           return { ...existing, workTimes: sw.workTimes };
         }
-        // 새로 추가된 근무자
         return {
           id: uid(),
           number: workerCounterRef.current++,
@@ -192,9 +222,27 @@ export default function App() {
       const unchanged =
         updated.length === prev.length &&
         updated.every((w, i) => w === prev[i]);
+      if (!unchanged) {
+        const updatedIdSet = new Set(updated.map((w) => w.id));
+        pendingRemovedIdsRef.current = prev
+          .filter((w) => !updatedIdSet.has(w.id))
+          .map((w) => w.id);
+      }
       return unchanged ? prev : updated;
     });
   }, [schedule, selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 스케줄에서 제거된 근무자의 강의실 배정 해제
+  useEffect(() => {
+    if (pendingRemovedIdsRef.current.length === 0) return;
+    const removedIds = pendingRemovedIdsRef.current;
+    pendingRemovedIdsRef.current = [];
+    setClassrooms((prev) =>
+      prev.map((c) =>
+        removedIds.includes(c.inspectorId) ? { ...c, inspectorId: null } : c,
+      ),
+    );
+  }, [workers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 행사가 바뀔 때마다 기존 배정 재검토 → 더 이상 점검 불가한 강의실은 배정 해제
   useEffect(() => {
@@ -297,6 +345,7 @@ export default function App() {
         schedule={schedule}
         onScheduleChange={handleScheduleChange}
         onBack={() => setPage("main")}
+        onClearCache={clearScheduleCache}
       />
     );
   }
@@ -347,7 +396,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.4.2</div>
+      <div className="app-version">v1.6.0</div>
     </>
   );
 }
