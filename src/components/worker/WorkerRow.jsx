@@ -22,17 +22,22 @@ export default function WorkerRow({
   };
 
   const saveEdit = () => {
-    if (!parseRange(editT1)) {
+    const t1 = editT1.trim();
+    const t2 = editT2.trim();
+    if (!t1 && !t2) {
+      onRemoveWorker(worker.id);
+      showStatus(`${worker.name} 근무시간 없음 — 삭제되었습니다.`, "info");
+      return;
+    }
+    if (!parseRange(t1)) {
       showStatus("근무시간 ① 형식 오류. 예: 08:30-11:30", "err");
       return;
     }
-    if (editT2.trim() && !parseRange(editT2)) {
+    if (t2 && !parseRange(t2)) {
       showStatus("근무시간 ② 형식 오류. 예: 13:30-18:00", "err");
       return;
     }
-    const workTimes = editT2.trim()
-      ? [editT1.trim(), editT2.trim()]
-      : [editT1.trim()];
+    const workTimes = t2 ? [t1, t2] : [t1];
     onUpdateWorker(worker.id, workTimes);
     setIsEditing(false);
     showStatus("근무시간이 수정되었습니다.", "ok");

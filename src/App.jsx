@@ -59,7 +59,9 @@ export default function App() {
   const statusTimer = useRef(null);
   const pendingRemovedIdsRef = useRef([]);
   const workersRef = useRef(workers);
-  useEffect(() => { workersRef.current = workers; }, [workers]);
+  useEffect(() => {
+    workersRef.current = workers;
+  }, [workers]);
 
   // ===== SCHEDULE CHANGE =====
   const handleScheduleChange = useCallback((newSchedule) => {
@@ -149,26 +151,45 @@ export default function App() {
     ]);
   }, []);
 
-  const removeWorker = useCallback((id) => {
-    setClassrooms((prev) =>
-      prev.map((c) => (c.inspectorId === id ? { ...c, inspectorId: null } : c)),
-    );
-    setWorkers((prev) => prev.filter((w) => w.id !== id));
-    setSelectedWorkerId((prev) => (prev === id ? null : prev));
-  }, []);
-
-  const updateWorker = useCallback((id, workTimes) => {
-    const worker = workersRef.current.find((w) => w.id === id);
-    setWorkers((prev) => prev.map((w) => (w.id === id ? { ...w, workTimes } : w)));
-    if (worker && selectedDay) {
-      setSchedule((prev) => ({
-        ...prev,
-        [selectedDay]: (prev[selectedDay] || []).map((sw) =>
-          sw.name === worker.name ? { ...sw, workTimes } : sw,
+  const removeWorker = useCallback(
+    (id) => {
+      const worker = workersRef.current.find((w) => w.id === id);
+      setClassrooms((prev) =>
+        prev.map((c) =>
+          c.inspectorId === id ? { ...c, inspectorId: null } : c,
         ),
-      }));
-    }
-  }, [selectedDay]);
+      );
+      setWorkers((prev) => prev.filter((w) => w.id !== id));
+      setSelectedWorkerId((prev) => (prev === id ? null : prev));
+      if (worker && selectedDay) {
+        setSchedule((prev) => ({
+          ...prev,
+          [selectedDay]: (prev[selectedDay] || []).filter(
+            (sw) => sw.name !== worker.name,
+          ),
+        }));
+      }
+    },
+    [selectedDay],
+  );
+
+  const updateWorker = useCallback(
+    (id, workTimes) => {
+      const worker = workersRef.current.find((w) => w.id === id);
+      setWorkers((prev) =>
+        prev.map((w) => (w.id === id ? { ...w, workTimes } : w)),
+      );
+      if (worker && selectedDay) {
+        setSchedule((prev) => ({
+          ...prev,
+          [selectedDay]: (prev[selectedDay] || []).map((sw) =>
+            sw.name === worker.name ? { ...sw, workTimes } : sw,
+          ),
+        }));
+      }
+    },
+    [selectedDay],
+  );
 
   const selectWorker = useCallback((id) => {
     setSelectedWorkerId((prev) => (prev === id ? null : id));
@@ -396,7 +417,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.6.0</div>
+      <div className="app-version">v1.7.0</div>
     </>
   );
 }
