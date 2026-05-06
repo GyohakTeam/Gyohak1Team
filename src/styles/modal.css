@@ -137,6 +137,95 @@
 }
 .modal-event-del:hover { color: #b71c1c; }
 
+/* ===== PATCH NOTES MODAL ===== */
+.patch-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patch-modal {
+  background: var(--white);
+  border-radius: 6px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.28);
+  width: 520px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.patch-header {
+  background: var(--black);
+  color: var(--white);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.patch-title { letter-spacing: 0.03em; }
+
+.patch-close {
+  background: none;
+  border: none;
+  color: var(--gray-300);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.patch-close:hover { color: var(--white); }
+
+.patch-body {
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.patch-version-block { display: flex; flex-direction: column; gap: 12px; }
+
+.patch-version-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--black);
+  border-bottom: 2px solid var(--black);
+  padding-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.patch-version-date {
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--gray-500);
+}
+
+.patch-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.patch-list li {
+  font-size: 13px;
+  color: var(--gray-700);
+  line-height: 1.7;
+}
+
 /* ===== EVENT LIST MODAL ===== */
 .event-list-body {
   padding: 14px;

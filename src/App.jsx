@@ -10,6 +10,7 @@ import { SCHEDULE, DAYS, SCHEDULE_VERSION } from "./schedule";
 import ClassroomPanel from "./components/classroom/ClassroomPanel";
 import WorkerPanel from "./components/worker/WorkerPanel";
 import SchedulePage from "./components/SchedulePage";
+import PatchNotesModal from "./components/PatchNotesModal";
 
 function initSchedule() {
   try {
@@ -32,6 +33,7 @@ function initSchedule() {
 
 export default function App() {
   const [page, setPage] = useState("main"); // 'main' | 'schedule'
+  const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [schedule, setSchedule] = useState(initSchedule);
 
   const [classrooms, setClassrooms] = useState([]);
@@ -375,10 +377,16 @@ export default function App() {
     <>
       <header className="app-header">
         강의실 점검 배정 시스템
-        <button className="sch-nav-btn" onClick={() => setPage("schedule")}>
-          📅 시간표 보기
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="sch-nav-btn" onClick={() => setShowPatchNotes(true)}>
+            📋 패치내역
+          </button>
+          <button className="sch-nav-btn" onClick={() => setPage("schedule")}>
+            📅 시간표 보기
+          </button>
+        </div>
       </header>
+      {showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}
       <div className="app-main">
         <ClassroomPanel
           classrooms={enrichedClassrooms}

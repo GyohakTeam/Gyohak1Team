@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DAYS, getPersonColor, SCHEDULE_VERSION } from "../schedule";
 import { toMin } from "../utils";
 
@@ -68,16 +68,22 @@ const DAY_HEADER = {
   금: { bg: "#c0356e", text: "#fff" },
 };
 
-export default function SchedulePage({ schedule, onScheduleChange, onBack, onClearCache }) {
+export default function SchedulePage({
+  schedule,
+  onScheduleChange,
+  onBack,
+  onClearCache,
+}) {
   const [saved, setSaved] = useState(false);
   const [addingDay, setAddingDay] = useState(null);
   const [dropdownPos, setDropdownPos] = useState(null);
+  const dragRef = useRef(null); // { mode: 'add' | 'remove' }
 
   // 전체 요일에 등록된 근무자 이름 풀
   const allWorkerNames = useMemo(() => {
     const names = new Set();
     for (const day of DAYS)
-      for (const w of (schedule[day] || [])) names.add(w.name);
+      for (const w of schedule[day] || []) names.add(w.name);
     return [...names];
   }, [schedule]);
 
@@ -88,7 +94,10 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
 
   function handleAddBtnClick(day, e) {
     e.stopPropagation();
-    if (addingDay === day) { setAddingDay(null); return; }
+    if (addingDay === day) {
+      setAddingDay(null);
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPos({ top: rect.bottom + 4, left: rect.left });
     setAddingDay(day);
@@ -100,9 +109,15 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
     for (const d of DAYS) {
       if (d === day) continue;
       const found = (schedule[d] || []).find((w) => w.name === name);
-      if (found?.workTimes?.length) { workTimes = [...found.workTimes]; break; }
+      if (found?.workTimes?.length) {
+        workTimes = [...found.workTimes];
+        break;
+      }
     }
-    onScheduleChange({ ...schedule, [day]: [...(schedule[day] || []), { name, workTimes }] });
+    onScheduleChange({
+      ...schedule,
+      [day]: [...(schedule[day] || []), { name, workTimes }],
+    });
     setAddingDay(null);
     setSaved(false);
   }
@@ -111,7 +126,10 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
   useEffect(() => {
     if (!addingDay) return;
     function onDown(e) {
-      if (!e.target.closest(".sch-add-dropdown") && !e.target.closest(".sch-add-btn"))
+      if (
+        !e.target.closest(".sch-add-dropdown") &&
+        !e.target.closest(".sch-add-btn")
+      )
         setAddingDay(null);
     }
     document.addEventListener("mousedown", onDown);
@@ -131,19 +149,21 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
     [schedule],
   );
 
-  function handleCellClick(day, workerIdx, slotMin, working) {
+  useEffect(() => {
+    function onMouseUp() { dragRef.current = null; }
+    document.addEventListener("mouseup", onMouseUp);
+    return () => document.removeEventListener("mouseup", onMouseUp);
+  }, []);
+
+  function applySlot(day, workerIdx, slotMin, mode) {
+    const dayWorkers = schedule[day] || [];
+    if (workerIdx >= dayWorkers.length) return;
     const newSchedule = { ...schedule };
-    const workers = newSchedule[day].map((w) => ({
-      ...w,
-      workTimes: [...w.workTimes],
-    }));
+    const workers = dayWorkers.map((w) => ({ ...w, workTimes: [...w.workTimes] }));
     const worker = workers[workerIdx];
     const ranges = workTimesToRanges(worker.workTimes);
-    const newRanges = working
-      ? removeSlot(ranges, slotMin)
-      : addSlot(ranges, slotMin);
+    const newRanges = mode === "remove" ? removeSlot(ranges, slotMin) : addSlot(ranges, slotMin);
     worker.workTimes = rangesToWorkTimes(newRanges);
-    // workTimes가 비면 해당 근무자를 당일 스케줄에서 제거
     newSchedule[day] =
       worker.workTimes.length === 0
         ? workers.filter((_, i) => i !== workerIdx)
@@ -152,14 +172,34 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
     setSaved(false);
   }
 
+  function handleCellMouseDown(day, workerIdx, slotMin, working, e) {
+    e.preventDefault();
+    // 왼쪽: 토글(현재 상태 반전), 오른쪽: 항상 삭제
+    const mode = e.button === 2 ? "remove" : working ? "remove" : "add";
+    dragRef.current = { mode };
+    applySlot(day, workerIdx, slotMin, mode);
+  }
+
+  function handleCellMouseEnter(day, workerIdx, slotMin) {
+    if (!dragRef.current) return;
+    applySlot(day, workerIdx, slotMin, dragRef.current.mode);
+  }
+
   function handleSave() {
-    localStorage.setItem("gyohak-schedule", JSON.stringify({ version: SCHEDULE_VERSION, data: schedule }));
+    localStorage.setItem(
+      "gyohak-schedule",
+      JSON.stringify({ version: SCHEDULE_VERSION, data: schedule }),
+    );
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
 
   function handleClearCache() {
-    if (window.confirm("저장된 시간표를 초기화하고 기본값으로 되돌릴까요?\n(현재 수정 내용이 모두 사라집니다)")) {
+    if (
+      window.confirm(
+        "저장된 시간표를 초기화하고 기본값으로 되돌릴까요?\n(현재 수정 내용이 모두 사라집니다)",
+      )
+    ) {
       onClearCache();
     }
   }
@@ -170,7 +210,7 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
         <button className="sch-back-btn" onClick={onBack}>
           ← 배정 화면
         </button>
-        <h1 className="sch-title">2026-1학기 3월 4주차 근로시간표</h1>
+        <h1 className="sch-title">2026-1학기 근로시간표</h1>
         <button
           className={`sch-save-btn ${saved ? "sch-save-ok" : ""}`}
           onClick={handleSave}
@@ -180,7 +220,7 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
       </div>
 
       <div className="sch-table-wrap">
-        <table className="sch-table">
+        <table className="sch-table" style={{ userSelect: "none" }}>
           <thead>
             <tr>
               <th className="sch-th sch-time-th" rowSpan={2}>
@@ -197,7 +237,14 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
                     borderLeft: "3px solid #555",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 6,
+                    }}
+                  >
                     {day}
                     <button
                       className="sch-add-btn"
@@ -267,9 +314,13 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
                           cursor: "pointer",
                           color: working ? "#111" : "transparent",
                         }}
-                        onClick={() =>
-                          handleCellClick(day, i, slotMin, working)
+                        onMouseDown={(e) =>
+                          handleCellMouseDown(day, i, slotMin, working, e)
                         }
+                        onMouseEnter={() =>
+                          handleCellMouseEnter(day, i, slotMin)
+                        }
+                        onContextMenu={(e) => e.preventDefault()}
                         title={
                           working
                             ? `${w.name} ${minToTime(slotMin)}~${minToTime(slotMin + 30)} 제거`
@@ -294,7 +345,10 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
 
       {/* ===== 근무자 추가 드롭다운 ===== */}
       {addingDay && dropdownPos && (
-        <div className="sch-add-dropdown" style={{ top: dropdownPos.top, left: dropdownPos.left }}>
+        <div
+          className="sch-add-dropdown"
+          style={{ top: dropdownPos.top, left: dropdownPos.left }}
+        >
           {getAvailable(addingDay).length === 0 ? (
             <div className="sch-add-empty">추가 가능한 근무자 없음</div>
           ) : (
@@ -306,7 +360,12 @@ export default function SchedulePage({ schedule, onScheduleChange, onBack, onCle
               >
                 <span
                   className="color-dot"
-                  style={{ background: getPersonColor(name), width: 8, height: 8, marginRight: 6 }}
+                  style={{
+                    background: getPersonColor(name),
+                    width: 8,
+                    height: 8,
+                    marginRight: 6,
+                  }}
                 />
                 {name}
               </button>
