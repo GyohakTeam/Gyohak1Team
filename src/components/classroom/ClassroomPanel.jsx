@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPersonColor } from "../../schedule";
 import EventModal from "../EventModal";
+import EventListModal from "../EventListModal";
 import PasteMode from "./PasteMode";
 import ClassroomRow from "./ClassroomRow";
 
@@ -25,6 +26,7 @@ export default function ClassroomPanel({
   isAssigning,
 }) {
   const [eventModalRoom, setEventModalRoom] = useState(null);
+  const [showEventList, setShowEventList] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleCopyTable = () => {
@@ -67,6 +69,11 @@ export default function ClassroomPanel({
               >
                 ✏ {manualMode ? "수동 모드 ON" : "수동 모드"}
               </button>
+              {events.length > 0 && (
+                <button className="reload-btn" onClick={() => setShowEventList(true)}>
+                  📋 행사 목록
+                </button>
+              )}
               {classrooms.length > 0 && (
                 <button className="reload-btn" onClick={handleCopyTable}>
                   {copied ? "✔ 복사됨" : "📋 표 복사"}
@@ -145,6 +152,13 @@ export default function ClassroomPanel({
           onAdd={onAddEvent}
           onRemove={onRemoveEvent}
           onClose={() => setEventModalRoom(null)}
+        />
+      )}
+
+      {showEventList && (
+        <EventListModal
+          events={events}
+          onClose={() => setShowEventList(false)}
         />
       )}
     </div>

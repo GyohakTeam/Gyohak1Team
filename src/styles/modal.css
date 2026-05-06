@@ -136,3 +136,34 @@
   line-height: 1;
 }
 .modal-event-del:hover { color: #b71c1c; }
+
+/* ===== EVENT LIST MODAL ===== */
+.event-list-body {
+  padding: 14px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.event-list-pre {
+  margin: 0;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--black);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.event-list-empty {
+  font-size: 13px;
+  color: var(--gray-500);
+  text-align: center;
+  padding: 10px 0;
+}
+
+.event-list-footer {
+  border-top: 1px solid var(--gray-200);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: flex-end;
+}
