@@ -1,0 +1,109 @@
+/* ===== HEADER ===== */
+.app-header {
+  background: var(--black);
+  color: var(--white);
+  padding: 10px 20px;
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* header nav button */
+.sch-nav-btn {
+  background: transparent;
+  border: 1px solid var(--gray-500);
+  color: var(--gray-300);
+  padding: 4px 11px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.sch-nav-btn:hover {
+  border-color: var(--white);
+  color: var(--white);
+}
+
+/* ===== LAYOUT ===== */
+.app-main {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+/* ===== LEFT PANEL ===== */
+.left-panel {
+  flex: 1.5;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mode-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== RIGHT COL ===== */
+.right-col {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.worker-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ===== PANEL TITLE ===== */
+.panel-title {
+  flex-shrink: 0;
+  background: var(--black);
+  color: var(--white);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reload-btn {
+  font-size: 11px;
+  font-weight: normal;
+  color: var(--gray-300);
+  background: transparent;
+  border: 1px solid var(--gray-700);
+  border-radius: 3px;
+  padding: 2px 9px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.reload-btn:hover {
+  background: var(--gray-700);
+  color: var(--white);
+}
+
+/* 수동 모드 버튼 활성 상태 */
+.reload-btn.manual-active { background: var(--black); color: var(--white); border-color: var(--black); }

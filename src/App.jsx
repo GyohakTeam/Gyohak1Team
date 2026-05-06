@@ -7,9 +7,9 @@ import {
   canInspect,
 } from "./utils";
 import { SCHEDULE, DAYS, SCHEDULE_VERSION } from "./schedule";
-import ClassroomPanel from "./ClassroomPanel";
-import WorkerPanel from "./WorkerPanel";
-import SchedulePage from "./SchedulePage";
+import ClassroomPanel from "./components/classroom/ClassroomPanel";
+import WorkerPanel from "./components/worker/WorkerPanel";
+import SchedulePage from "./components/SchedulePage";
 
 function initSchedule() {
   try {

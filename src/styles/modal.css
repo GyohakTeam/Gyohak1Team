@@ -1,0 +1,138 @@
+/* ===== EVENT MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-box {
+  background: var(--white);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  width: 340px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: var(--black);
+  color: var(--white);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--gray-300);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.modal-close-btn:hover { color: var(--white); }
+
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.modal-tab {
+  flex: 1;
+  padding: 8px 0;
+  background: var(--gray-100);
+  border: none;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--gray-700);
+  transition: all 0.12s;
+  border-right: 1px solid var(--gray-200);
+}
+.modal-tab:last-child { border-right: none; }
+.modal-tab:hover { background: var(--gray-200); }
+.modal-tab.active {
+  background: var(--white);
+  color: var(--black);
+  font-weight: bold;
+}
+
+.modal-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-time-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-time-select {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--gray-300);
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: monospace;
+  background: var(--white);
+  cursor: pointer;
+}
+.modal-time-select:focus { outline: none; border-color: var(--black); }
+
+.modal-time-sep { color: var(--gray-500); font-size: 13px; flex-shrink: 0; }
+
+.modal-direct-row { display: flex; gap: 8px; align-items: center; }
+
+.modal-error { font-size: 11px; color: #b71c1c; }
+
+.modal-event-list {
+  border-top: 1px solid var(--gray-200);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.modal-event-list-title {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.modal-event-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #5c4300;
+  font-family: monospace;
+}
+
+.modal-event-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: #856404;
+  padding: 0;
+  line-height: 1;
+}
+.modal-event-del:hover { color: #b71c1c; }

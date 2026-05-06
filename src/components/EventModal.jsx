@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { parseRange } from "./utils";
+import { parseRange } from "../utils";
 
 const TIMES = [];
 for (let h = 9; h <= 23; h++) {

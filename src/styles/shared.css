@@ -1,0 +1,104 @@
+/* ===== BUTTONS ===== */
+.btn-row { display: flex; gap: 8px; justify-content: center; }
+
+.btn {
+  padding: 7px 18px;
+  border: 1px solid var(--black);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: inherit;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.btn-primary   { background: var(--black); color: var(--white); }
+.btn-primary:hover   { background: var(--gray-700); border-color: var(--gray-700); }
+.btn-secondary { background: var(--white); color: var(--black); }
+.btn-secondary:hover { background: var(--gray-200); }
+.btn-danger    { background: var(--white); color: var(--black); border-color: var(--gray-300); }
+.btn-danger:hover    { background: var(--black); color: var(--white); border-color: var(--black); }
+.btn-sm  { padding: 3px 8px; font-size: 11px; }
+.btn-add { align-self: flex-end; }
+
+/* ===== TABLES ===== */
+.table-wrap { overflow: auto; flex: 1; }
+
+table { width: 100%; border-collapse: collapse; }
+
+th {
+  background: var(--gray-900);
+  color: var(--white);
+  padding: 7px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-right: 1px solid var(--gray-700);
+}
+th:last-child { border-right: none; }
+
+td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  color: var(--gray-500);
+  padding: 20px;
+  font-size: 12px;
+}
+
+/* ===== STATUS BAR ===== */
+.status-bar {
+  padding: 6px 10px;
+  border-left: 3px solid var(--gray-300);
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+/* ===== COLOR DOT ===== */
+.color-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ===== INLINE TIME EDIT ===== */
+.time-edit { display: flex; flex-direction: column; gap: 4px; padding: 2px 0; }
+.time-edit-input {
+  width: 120px;
+  padding: 4px 7px;
+  border: 1px solid var(--gray-300);
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+  background: var(--white);
+}
+.time-edit-input:focus { outline: none; border-color: var(--black); }
+.time-edit-btns { display: flex; gap: 4px; margin-top: 2px; }
+
+/* ===== EDIT BUTTON ===== */
+.edit-slot-btn {
+  background: none;
+  border: 1px solid var(--gray-300);
+  border-radius: 2px;
+  padding: 1px 5px;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--gray-500);
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.edit-slot-btn:hover { border-color: var(--black); color: var(--black); }

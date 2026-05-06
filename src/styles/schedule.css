@@ -1,0 +1,206 @@
+/* ===== SCHEDULE PAGE ===== */
+.sch-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--gray-100);
+}
+
+.sch-top-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--black);
+  padding: 10px 20px;
+}
+
+.sch-title {
+  color: var(--white);
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+}
+
+.sch-back-btn {
+  background: transparent;
+  border: 1px solid var(--gray-500);
+  color: var(--gray-300);
+  padding: 5px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.sch-back-btn:hover {
+  border-color: var(--white);
+  color: var(--white);
+}
+
+.sch-save-btn {
+  background: #1a56db;
+  border: 1px solid #1a56db;
+  color: #fff;
+  padding: 5px 14px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+  min-width: 80px;
+}
+.sch-save-btn:hover { background: #1344b4; border-color: #1344b4; }
+.sch-save-btn.sch-save-ok {
+  background: #1a7a3a;
+  border-color: #1a7a3a;
+}
+
+.sch-reset-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e1e1e;
+  border: 1px solid #b45309;
+  color: #fbbf24;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  z-index: 200;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.sch-reset-btn:hover { background: #b45309; color: #fff; border-color: #b45309; }
+
+.sch-table-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+.sch-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  background: var(--white);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.sch-th {
+  padding: 5px 6px;
+  text-align: center;
+  font-weight: bold;
+  border: 1px solid #ccc;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.sch-time-th {
+  background: var(--gray-900);
+  color: var(--white);
+  min-width: 110px;
+  z-index: 3;
+  left: 0;
+}
+
+.sch-day-th {
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  border-left: 3px solid #888 !important;
+}
+
+.sch-name-th {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 5px;
+  top: 29px; /* day header 높이만큼 */
+}
+
+.sch-row:hover .sch-time-td,
+.sch-row:hover .sch-cell {
+  filter: brightness(0.94);
+}
+
+.sch-time-td {
+  position: sticky;
+  left: 0;
+  background: var(--gray-900);
+  color: var(--white);
+  font-family: monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-bottom: 1px solid #444;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.sch-cell {
+  text-align: center;
+  padding: 3px 2px;
+  font-size: 11px;
+  font-weight: bold;
+  border-bottom: 1px solid #e0e0e0;
+  min-width: 30px;
+  white-space: nowrap;
+  user-select: none;
+  transition: filter 0.1s;
+}
+.sch-cell-on:hover  { filter: brightness(0.82); }
+.sch-cell-off:hover { filter: brightness(0.92); background-color: #e8e8e8 !important; }
+
+/* ===== ADD WORKER DROPDOWN ===== */
+.sch-add-btn {
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.5);
+  color: #fff;
+  border-radius: 3px;
+  padding: 0px 7px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+.sch-add-btn:hover { background: rgba(255,255,255,0.4); }
+
+.sch-add-dropdown {
+  position: fixed;
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  z-index: 200;
+  min-width: 110px;
+  overflow: hidden;
+}
+
+.sch-add-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--gray-200);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.sch-add-option:last-child { border-bottom: none; }
+.sch-add-option:hover { background: var(--gray-100); }
+
+.sch-add-empty {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--gray-500);
+}

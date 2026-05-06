@@ -1,0 +1,39 @@
+/* ===== RESET & VARIABLES ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black:    #111111;
+  --gray-900: #222222;
+  --gray-700: #444444;
+  --gray-500: #888888;
+  --gray-300: #cccccc;
+  --gray-200: #e8e8e8;
+  --gray-100: #f4f4f4;
+  --white:    #ffffff;
+  --green-bg: #d4edda;
+}
+
+body {
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  background: var(--gray-100);
+  min-height: 100vh;
+  font-size: 13px;
+  color: var(--black);
+}
+
+/* ===== VERSION ===== */
+.app-version {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 11px;
+  color: var(--gray-500);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--gray-100); }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-500); }

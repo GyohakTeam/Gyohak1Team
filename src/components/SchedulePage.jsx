@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { DAYS, getPersonColor, SCHEDULE_VERSION } from "./schedule";
-import { toMin } from "./utils";
+import { DAYS, getPersonColor, SCHEDULE_VERSION } from "../schedule";
+import { toMin } from "../utils";
 
 // 08:30 ~ 22:00, 30분 단위
 const TIME_SLOTS = (() => {
