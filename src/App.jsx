@@ -226,22 +226,27 @@ export default function App() {
     if (!selectedDay) return;
     const scheduleList = schedule[selectedDay] || [];
     setWorkers((prev) => {
-      const updated = scheduleList.map((sw) => {
-        const existing = prev.find((w) => w.name === sw.name);
-        if (existing) {
-          if (
-            JSON.stringify(existing.workTimes) === JSON.stringify(sw.workTimes)
-          )
-            return existing;
-          return { ...existing, workTimes: sw.workTimes };
-        }
-        return {
-          id: uid(),
-          number: workerCounterRef.current++,
-          name: sw.name,
-          workTimes: sw.workTimes,
-        };
-      });
+      const scheduleNames = new Set(scheduleList.map((sw) => sw.name));
+      const manualWorkers = prev.filter((w) => !scheduleNames.has(w.name));
+      const updated = [
+        ...scheduleList.map((sw) => {
+          const existing = prev.find((w) => w.name === sw.name);
+          if (existing) {
+            if (
+              JSON.stringify(existing.workTimes) === JSON.stringify(sw.workTimes)
+            )
+              return existing;
+            return { ...existing, workTimes: sw.workTimes };
+          }
+          return {
+            id: uid(),
+            number: workerCounterRef.current++,
+            name: sw.name,
+            workTimes: sw.workTimes,
+          };
+        }),
+        ...manualWorkers,
+      ];
       const unchanged =
         updated.length === prev.length &&
         updated.every((w, i) => w === prev[i]);
