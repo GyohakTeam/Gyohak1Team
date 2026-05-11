@@ -233,7 +233,8 @@ export default function App() {
           const existing = prev.find((w) => w.name === sw.name);
           if (existing) {
             if (
-              JSON.stringify(existing.workTimes) === JSON.stringify(sw.workTimes)
+              JSON.stringify(existing.workTimes) ===
+              JSON.stringify(sw.workTimes)
             )
               return existing;
             return { ...existing, workTimes: sw.workTimes };
@@ -383,7 +384,10 @@ export default function App() {
       <header className="app-header">
         강의실 점검 배정 시스템
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="sch-nav-btn" onClick={() => setShowPatchNotes(true)}>
+          <button
+            className="sch-nav-btn"
+            onClick={() => setShowPatchNotes(true)}
+          >
             📋 패치내역
           </button>
           <button className="sch-nav-btn" onClick={() => setPage("schedule")}>
@@ -391,7 +395,9 @@ export default function App() {
           </button>
         </div>
       </header>
-      {showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}
+      {showPatchNotes && (
+        <PatchNotesModal onClose={() => setShowPatchNotes(false)} />
+      )}
       <div className="app-main">
         <ClassroomPanel
           classrooms={enrichedClassrooms}
@@ -430,7 +436,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.7.0</div>
+      <div className="app-version">v1.7.1</div>
     </>
   );
 }
