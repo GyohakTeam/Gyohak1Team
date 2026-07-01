@@ -146,14 +146,16 @@
 .count-bar strong { color: var(--white); font-size: 14px; }
 
 /* ===== HINT ===== */
-.hint-text {
+/* .hint-text {
   flex-shrink: 0;
   font-size: 11px;
   color: var(--gray-500);
   padding: 8px 14px;
   border-top: 1px solid var(--gray-200);
   line-height: 1.7;
-}
+} 
+일단 지금은 없앨 겁니다.  
+*/
 
 /* ===== REASSIGN BANNER ===== */
 .reassign-banner {

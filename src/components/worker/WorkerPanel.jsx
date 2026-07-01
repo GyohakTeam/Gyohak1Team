@@ -26,25 +26,27 @@ export default function WorkerPanel({
   return (
     <div className="right-col">
       <div className="worker-panel">
-        <div className="panel-title">출근자 명단</div>
+        <div className="panel-header">
+          <div className="panel-title">출근자 명단</div>
 
-        <DaySelector selectedDay={selectedDay} onLoadDay={onLoadDay} />
+          <DaySelector selectedDay={selectedDay} onLoadDay={onLoadDay} />
 
-        <WorkerForm onAddWorker={onAddWorker} showStatus={showStatus} />
+          <WorkerForm onAddWorker={onAddWorker} showStatus={showStatus} />
 
-        {selectedWorker && (
-          <div
-            className="selection-banner"
-            style={{ borderLeftColor: getPersonColor(selectedWorker.name) }}
-          >
-            <span
-              className="color-dot"
-              style={{ background: getPersonColor(selectedWorker.name) }}
-            />
-            {selectedWorker.name} 선택됨
-            {manualMode && " — 점검자 칸 클릭으로 배정 (여러 칸 가능)"}
-          </div>
-        )}
+          {selectedWorker && (
+            <div
+              className="selection-banner"
+              style={{ borderLeftColor: getPersonColor(selectedWorker.name) }}
+            >
+              <span
+                className="color-dot"
+                style={{ background: getPersonColor(selectedWorker.name) }}
+              />
+              {selectedWorker.name} 선택됨
+              {manualMode && " — 점검자 칸 클릭으로 배정 (여러 칸 가능)"}
+            </div>
+          )}
+        </div>
 
         <div className="table-wrap">
           <table>
@@ -91,14 +93,17 @@ export default function WorkerPanel({
         <div className="count-bar">
           근무자 <strong>{workers.length}</strong>명 &nbsp;/&nbsp; 점검 가능
           강의실 <strong>{assignableRooms}</strong>개 &nbsp;/&nbsp;
-          <strong>{assignableRooms}</strong> ÷ <strong>{workers.length}</strong>{" "}
-          =
+          {/* <strong>{assignableRooms}</strong> ÷ <strong>{workers.length}</strong>{" "}
+          = */}
+          평균 &nbsp;
           <strong>
-            {assignableRooms ? (assignableRooms / workers.length).toFixed(2) : "0.00"}
+            {assignableRooms ? (assignableRooms / workers.length).toFixed(1) : "0.0"}
           </strong>
+          개&nbsp;
+          배분
         </div>
 
-        <div className="hint-text">
+        {/* <div className="hint-text">
           이름 클릭 → 담당 강의실 색상 표시
           {manualMode && (
             <>
@@ -107,6 +112,8 @@ export default function WorkerPanel({
             </>
           )}
         </div>
+        힌트 관련 코드들을 없앴습니다.
+        */}
       </div>
     </div>
   );

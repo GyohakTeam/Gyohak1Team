@@ -44,8 +44,8 @@ export default function App() {
   const [status, setStatus] = useState({ text: "", type: "" });
   const [isAssigning, setIsAssigning] = useState(false);
   const [showReassignBanner, setShowReassignBanner] = useState(false);
-
-  const [selectedDay, setSelectedDay] = useState(null);
+  const nowDays = ['일', '월', '화', '수', '목', '금', '토'];
+  const [selectedDay, setSelectedDay] = useState(nowDays[new Date().getDay() == 6 || new Date().getDay() == 0 ? 0 : new Date().getDay()]);
   const [events, setEvents] = useState([]);
 
   const enrichedClassrooms = useMemo(
@@ -436,7 +436,7 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.7.1</div>
+      {/* <div className="app-version">v1.7.1</div> */}
     </>
   );
 }
