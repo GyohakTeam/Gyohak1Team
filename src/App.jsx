@@ -44,8 +44,8 @@ export default function App() {
   const [status, setStatus] = useState({ text: "", type: "" });
   const [isAssigning, setIsAssigning] = useState(false);
   const [showReassignBanner, setShowReassignBanner] = useState(false);
-  const nowDays = ['일', '월', '화', '수', '목', '금', '토'];
-  const [selectedDay, setSelectedDay] = useState(nowDays[new Date().getDay() == 6 || new Date().getDay() == 0 ? 0 : new Date().getDay()]);
+  const nowDays = ['월', '화', '수', '목', '금']; // 월요일 금요일까지의 배열 저장
+  const [selectedDay, setSelectedDay] = useState(nowDays[new Date().getDay() == 6 || new Date().getDay() == 0 ? 0 : new Date().getDay()]); // 접속 요일로 세팅, 주말은 월요일로
   const [events, setEvents] = useState([]);
 
   const enrichedClassrooms = useMemo(
