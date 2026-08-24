@@ -12,6 +12,8 @@ import {
  * 파일을 떨어뜨리거나 고르거나 복붙하면 파싱해서 미리보기를 보여주고,
  * "적용"을 누를 때만 실제 시간표를 바꾼다. (파싱이 어긋났을 때 기존 데이터를 지키기 위해)
  */
+import Icon from "./Icon";
+
 export default function TimetableImportModal({ initialFile, onApply, onClose }) {
   const [parsed, setParsed] = useState(null);
   const [source, setSource] = useState("");
@@ -102,13 +104,15 @@ export default function TimetableImportModal({ initialFile, onApply, onClose }) 
         <div className="modal-header">
           <span>엑셀 시간표 불러오기</span>
           <button className="modal-close-btn" onClick={onClose}>
-            ✕
+            <Icon name="x" size={15} />
           </button>
         </div>
 
         <div className="tt-import-body">
           <div className={`tt-dropzone${dragging ? " tt-dropzone-active" : ""}`}>
-            <div className="tt-dropzone-icon">{dragging ? "📥" : "📊"}</div>
+            <div className="tt-dropzone-icon">
+              <Icon name={dragging ? "download" : "table"} size={28} strokeWidth={1.5} />
+            </div>
             <div className="tt-dropzone-main">
               {dragging
                 ? "여기에 놓으세요"

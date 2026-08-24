@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import Icon from "./Icon";
+
 export default function EventListModal({ events, onClose }) {
   const [copied, setCopied] = useState(false);
 
@@ -20,7 +22,9 @@ export default function EventListModal({ events, onClose }) {
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <span>행사 목록</span>
-          <button className="modal-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose}>
+            <Icon name="x" size={15} />
+          </button>
         </div>
 
         <div className="event-list-body">
@@ -34,7 +38,8 @@ export default function EventListModal({ events, onClose }) {
         {lines.length > 0 && (
           <div className="event-list-footer">
             <button className="btn btn-primary" onClick={handleCopy}>
-              {copied ? "✔ 복사됨" : "📋 복사"}
+              <Icon name={copied ? "check" : "copy"} size={14} />
+              {copied ? "복사됨" : "복사"}
             </button>
           </div>
         )}

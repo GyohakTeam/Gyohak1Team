@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { canInspect } from "../../utils";
 import { getPersonColor } from "../../schedule";
+import Icon from "../Icon";
+import Menu from "../Menu";
 
 export default function ClassroomRow({
   classroom,
   workers,
   selectedWorkerId,
   selWorker,
-  manualMode,
   events,
   onInspectorClick,
   onUpdateClassroom,
+  onUnassign,
   onOpenEventModal,
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -52,28 +54,23 @@ export default function ClassroomRow({
   const inspClass = [
     "inspector-cell",
     inspector ? "assigned" : "",
-    manualMode && selectedWorkerId && assignable ? "can-assign" : "",
+    selectedWorkerId && assignable ? "can-assign" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const title = manualMode
-    ? selectedWorkerId
-      ? assignable
-        ? "클릭하여 배정"
-        : "근무시간 불일치"
-      : inspector
-        ? `${inspector.name} — 클릭 시 선택`
-        : "근로자를 먼저 선택하세요"
+  // 수동 모드 토글 없이 언제나 클릭으로 배정할 수 있다
+  const title = selectedWorkerId
+    ? assignable
+      ? "클릭하여 배정"
+      : "근무시간 불일치"
     : inspector
-      ? inspector.name
-      : "";
+      ? `${inspector.name} — 클릭 시 선택`
+      : "명단에서 근무자를 먼저 선택하세요";
 
   return (
     <tr className={rowClass()} style={rowStyle()}>
-      <td>
-        <strong>{classroom.room}</strong>
-      </td>
+      <td className="room-cell">{classroom.room}</td>
       <td>
         {isEditing ? (
           <div className="time-edit">
@@ -111,46 +108,62 @@ export default function ClassroomRow({
                 <span key={i} className="time-chip">{t}</span>
               ))
             ) : (
-              <span className="no-time">없음</span>
+              <span className="no-time">점검 가능 시간 없음</span>
             )}
-            <button className="edit-slot-btn" onClick={startEdit} title="시간 수정">
-              ✏
-            </button>
-            <button
-              className="edit-slot-btn event-add-btn"
-              onClick={() => onOpenEventModal(classroom.room)}
-              title="행사 추가"
-            >
-              행사추가
-            </button>
             {roomEvents.map((ev) => (
               <span key={ev.id} className="event-chip" title="행사로 인한 점검 불가 시간">
-                🚫 {ev.time}
+                <Icon name="ban" size={12} />
+                {ev.time}
               </span>
             ))}
+            <button
+              className="chip-btn"
+              onClick={() => onOpenEventModal(classroom.room)}
+              title="행사 시간 추가 — 그 시간은 점검에서 제외됩니다"
+            >
+              <Icon name="calendar-plus" size={13} />
+              행사 추가
+            </button>
           </div>
         )}
       </td>
       <td
         className={inspClass}
-        onClick={() => manualMode && !isEditing && onInspectorClick(classroom.id)}
+        onClick={() => !isEditing && onInspectorClick(classroom.id)}
         title={title}
         style={inspector ? { backgroundColor: getPersonColor(inspector.name) } : {}}
       >
         {inspector ? (
           <div
-            className="inspector-name"
-            style={
-              inspector.id === selectedWorkerId
-                ? { color: "#111", fontWeight: "bold", fontSize: 14 }
-                : { color: "#111" }
-            }
+            className={`inspector-name${inspector.id === selectedWorkerId ? " is-selected" : ""}`}
           >
+            <Icon name="user" size={13} />
             {inspector.name}
           </div>
         ) : (
-          <span className="unassigned-label">미배정</span>
+          <span className="unassigned-label">
+            <Icon name="user" size={13} />
+            미배정
+          </span>
         )}
+      </td>
+      <td className="row-menu-cell">
+        <Menu
+          items={[
+            { label: "점검 시간 수정", icon: "pencil", onClick: startEdit },
+            {
+              label: "행사 추가",
+              icon: "calendar-plus",
+              onClick: () => onOpenEventModal(classroom.room),
+            },
+            inspector && {
+              label: "배정 해제",
+              icon: "x",
+              danger: true,
+              onClick: () => onUnassign(classroom.id),
+            },
+          ]}
+        />
       </td>
     </tr>
   );

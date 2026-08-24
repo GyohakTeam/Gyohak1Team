@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { PATCH_NOTES } from "../patchNotes";
 
+import Icon from "./Icon";
+
 export default function PatchNotesModal({ onClose }) {
   useEffect(() => {
     function onKey(e) {
@@ -15,7 +17,9 @@ export default function PatchNotesModal({ onClose }) {
       <div className="patch-modal" onClick={(e) => e.stopPropagation()}>
         <div className="patch-header">
           <span className="patch-title">패치 내역</span>
-          <button className="patch-close" onClick={onClose}>✕</button>
+          <button className="patch-close" onClick={onClose}>
+            <Icon name="x" size={15} />
+          </button>
         </div>
         <div className="patch-body">
           {PATCH_NOTES.map(({ version, date, items }) => (

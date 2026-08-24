@@ -18,6 +18,11 @@ import ClassroomPanel from "./components/classroom/ClassroomPanel";
 import WorkerPanel from "./components/worker/WorkerPanel";
 import SchedulePage from "./components/SchedulePage";
 import PatchNotesModal from "./components/PatchNotesModal";
+import TimetableImportModal from "./components/TimetableImportModal";
+import AppHeader, { HeaderMark } from "./components/AppHeader";
+import Icon from "./components/Icon";
+import Toast from "./components/Toast";
+import { ExcelDropOverlay, useExcelDrop } from "./components/ExcelDrop";
 
 const STORAGE_KEY = "gyohak-timetable";
 
@@ -57,13 +62,14 @@ function initial() {
 export default function App() {
   const [page, setPage] = useState("main"); // 'main' | 'schedule'
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [importFile, setImportFile] = useState(null); // 드래그로 떨어뜨린 파일
+  const [showImport, setShowImport] = useState(false);
   const [schedule, setSchedule] = useState(() => initial().schedule);
   const [title, setTitle] = useState(() => initial().title);
 
   const [classrooms, setClassrooms] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState(null);
-  const [manualMode, setManualMode] = useState(false);
   const [mode, setMode] = useState("paste"); // 'paste' | 'table'
   const [status, setStatus] = useState({ text: "", type: "" });
   const [isAssigning, setIsAssigning] = useState(false);
@@ -71,6 +77,14 @@ export default function App() {
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [events, setEvents] = useState([]);
+
+  // 시간표에 등록된 전체 근무자 수 (헤더 부제용)
+  const rosterCount = useMemo(() => {
+    const names = new Set();
+    for (const day of DAYS)
+      for (const w of schedule[day] || []) names.add(w.name);
+    return names.size;
+  }, [schedule]);
 
   const enrichedClassrooms = useMemo(
     () =>
@@ -88,6 +102,18 @@ export default function App() {
   useEffect(() => {
     workersRef.current = workers;
   }, [workers]);
+
+  // ===== STATUS =====
+  const showStatus = useCallback((text, type) => {
+    setStatus({ text, type });
+    if (statusTimer.current) clearTimeout(statusTimer.current);
+    if (type === "ok" || type === "info") {
+      statusTimer.current = setTimeout(
+        () => setStatus({ text: "", type: "" }),
+        4000,
+      );
+    }
+  }, []);
 
   // ===== SCHEDULE CHANGE =====
   const handleScheduleChange = useCallback((newSchedule) => {
@@ -116,6 +142,39 @@ export default function App() {
     [resetAssignments],
   );
 
+  // ===== 불러오기 모달 =====
+  const openImport = useCallback((file = null) => {
+    setImportFile(file);
+    setShowImport(true);
+  }, []);
+
+  const closeImport = useCallback(() => {
+    setShowImport(false);
+    setImportFile(null);
+  }, []);
+
+  const applyImport = useCallback(
+    (parsed) => {
+      importTimetable(parsed);
+      closeImport();
+      showStatus(
+        `${parsed.names.length}명의 시간표를 불러왔습니다. 요일을 선택하세요.`,
+        "ok",
+      );
+    },
+    [importTimetable, closeImport, showStatus],
+  );
+
+  // ===== 화면 아무 곳에나 엑셀을 떨어뜨리면 불러오기 =====
+  const { dragging, dropProps } = useExcelDrop(
+    (file) => openImport(file),
+    (file) =>
+      showStatus(
+        `"${file.name}" 은 엑셀 파일이 아닙니다. .xlsx 파일을 올려주세요.`,
+        "err",
+      ),
+  );
+
   // ===== 시간표 전체 비우기 =====
   const clearTimetable = useCallback(() => {
     clearRoster();
@@ -126,18 +185,6 @@ export default function App() {
     setTitle("");
     resetAssignments();
   }, [resetAssignments]);
-
-  // ===== STATUS =====
-  const showStatus = useCallback((text, type) => {
-    setStatus({ text, type });
-    if (statusTimer.current) clearTimeout(statusTimer.current);
-    if (type === "ok" || type === "info") {
-      statusTimer.current = setTimeout(
-        () => setStatus({ text: "", type: "" }),
-        4000,
-      );
-    }
-  }, []);
 
   // ===== IMPORT =====
   const importData = useCallback(
@@ -173,7 +220,7 @@ export default function App() {
       if (list.length === 0) {
         showStatus(
           isScheduleEmpty(schedule)
-            ? "시간표가 비어 있습니다 — 📅 시간표에서 엑셀 파일을 불러오세요."
+            ? "시간표가 비어 있습니다 — 상단 '엑셀 불러오기'로 근로시간표를 읽어오세요."
             : `${day}요일에 등록된 근무자가 없습니다.`,
           "warn",
         );
@@ -255,6 +302,12 @@ export default function App() {
   const updateClassroom = useCallback((id, timeSlots) => {
     setClassrooms((prev) =>
       prev.map((c) => (c.id === id ? { ...c, timeSlots } : c)),
+    );
+  }, []);
+
+  const unassignRoom = useCallback((id) => {
+    setClassrooms((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, inspectorId: null } : c)),
     );
   }, []);
 
@@ -421,36 +474,83 @@ export default function App() {
     [selectedWorkerId, showStatus],
   );
 
+  const importModal = showImport ? (
+    <TimetableImportModal
+      initialFile={importFile}
+      onApply={applyImport}
+      onClose={closeImport}
+    />
+  ) : null;
+
   if (page === "schedule") {
     return (
-      <SchedulePage
-        schedule={schedule}
-        title={title}
-        onScheduleChange={handleScheduleChange}
-        onTitleChange={setTitle}
-        onImportTimetable={importTimetable}
-        onBack={() => setPage("main")}
-        onClearAll={clearTimetable}
-      />
+      <>
+        <SchedulePage
+          schedule={schedule}
+          title={title}
+          rosterCount={rosterCount}
+          onScheduleChange={handleScheduleChange}
+          onTitleChange={setTitle}
+          onOpenImport={openImport}
+          onBack={() => setPage("main")}
+          onClearAll={clearTimetable}
+        />
+        {importModal}
+      </>
     );
   }
 
+  const scheduleEmpty = isScheduleEmpty(schedule);
+
   return (
-    <>
-      <header className="app-header">
-        강의실 점검 배정 시스템
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className="sch-nav-btn"
-            onClick={() => setShowPatchNotes(true)}
-          >
-            📋 패치내역
-          </button>
-          <button className="sch-nav-btn" onClick={() => setPage("schedule")}>
-            📅 시간표 보기
-          </button>
-        </div>
-      </header>
+    <div className="app-shell" {...dropProps}>
+      <AppHeader
+        left={<HeaderMark />}
+        title={
+          <div className="hdr-title">
+            강의실 점검 배정 시스템
+            <span className="hdr-ver">v1.9.0</span>
+          </div>
+        }
+        subtitle={
+          scheduleEmpty ? (
+            <span className="hdr-sub-warn">
+              <Icon name="alert" size={13} />
+              시간표 없음 — 엑셀 파일을 불러오세요
+            </span>
+          ) : (
+            <>
+              {title || "근로시간표"}
+              <span className="hdr-dot">·</span>
+              {selectedDay
+                ? `${selectedDay}요일 ${workers.length}명`
+                : `근무자 ${rosterCount}명`}
+            </>
+          )
+        }
+        actions={
+          <>
+            <button className="hdr-btn hdr-btn-primary" onClick={() => openImport()}>
+              <Icon name="download" size={15} />
+              엑셀 불러오기
+            </button>
+            <button
+              className="hdr-btn hdr-btn-primary"
+              onClick={() => setPage("schedule")}
+            >
+              <Icon name="calendar-days" size={15} />
+              시간표
+            </button>
+            <button
+              className="hdr-btn hdr-btn-icon"
+              title="패치 내역"
+              onClick={() => setShowPatchNotes(true)}
+            >
+              <Icon name="clipboard-list" size={16} />
+            </button>
+          </>
+        }
+      />
       {showPatchNotes && (
         <PatchNotesModal onClose={() => setShowPatchNotes(false)} />
       )}
@@ -465,22 +565,21 @@ export default function App() {
           onImport={importData}
           onClear={clearAll}
           onSwitchToPaste={() => setMode("paste")}
-          manualMode={manualMode}
-          onToggleManualMode={() => setManualMode((v) => !v)}
           onInspectorClick={handleInspectorClick}
           onAutoAssign={handleAutoAssign}
           onReAssign={handleReAssign}
           isAssigning={isAssigning}
           onUpdateClassroom={updateClassroom}
+          onUnassign={unassignRoom}
           onAddEvent={addEvent}
           onRemoveEvent={removeEvent}
         />
         <WorkerPanel
           workers={workers}
           classrooms={enrichedClassrooms}
+          schedule={schedule}
           selectedWorkerId={selectedWorkerId}
           selectedDay={selectedDay}
-          manualMode={manualMode}
           onAddWorker={addWorker}
           onRemoveWorker={removeWorker}
           onUpdateWorker={updateWorker}
@@ -494,7 +593,11 @@ export default function App() {
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.8.0</div>
-    </>
+      {mode === "table" && (
+        <Toast status={status} onDismiss={() => setStatus({ text: "", type: "" })} />
+      )}
+      <ExcelDropOverlay show={dragging} />
+      {importModal}
+    </div>
   );
 }

@@ -9,14 +9,15 @@ import {
 import {
   addSlot,
   formatHours,
-  isXlsxFile,
   minToTime,
   rangesToWorkTimes,
   removeSlot,
   totalMinutes,
   workTimesToRanges,
 } from "../timetable";
-import TimetableImportModal from "./TimetableImportModal";
+import AppHeader, { HeaderMark } from "./AppHeader";
+import Icon from "./Icon";
+import { ExcelDropOverlay, useExcelDrop } from "./ExcelDrop";
 
 const SLOT = 30;
 const DEFAULT_START = 8 * 60 + 30;
@@ -50,25 +51,23 @@ const DAY_HEADER = {
 export default function SchedulePage({
   schedule,
   title,
+  rosterCount,
   onScheduleChange,
   onTitleChange,
-  onImportTimetable,
+  onOpenImport,
   onBack,
   onClearAll,
 }) {
   const [saved, setSaved] = useState(false);
   const [addingDay, setAddingDay] = useState(null);
   const [dropdownPos, setDropdownPos] = useState(null);
-  const [importing, setImporting] = useState(false);
-  const [droppedFile, setDroppedFile] = useState(null);
-  const [dragFile, setDragFile] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
   const [editingName, setEditingName] = useState(null);
   const [nameDraft, setNameDraft] = useState("");
   const [notice, setNotice] = useState("");
+  const [activeSlot, setActiveSlot] = useState(null); // 마지막으로 누른 시간 줄
   const dragRef = useRef(null); // { mode: 'add' | 'remove' }
-  const dragDepth = useRef(0);
 
   const empty = isScheduleEmpty(schedule);
   const timeSlots = useMemo(() => buildTimeSlots(schedule), [schedule]);
@@ -108,6 +107,13 @@ export default function SchedulePage({
     setTimeout(() => setNotice(""), 3000);
   }
 
+  // ── 화면 아무 곳에나 엑셀을 떨어뜨리면 불러오기
+  const { dragging, dropProps } = useExcelDrop(
+    (file) => onOpenImport(file),
+    (file) =>
+      flash(`"${file.name}" 은 엑셀 파일이 아닙니다. .xlsx 파일을 올려주세요.`),
+  );
+
   // ───────────────────────────────────────────────
   // 셀 드래그 편집
   // ───────────────────────────────────────────────
@@ -140,16 +146,18 @@ export default function SchedulePage({
     setSaved(false);
   }
 
-  function handleCellMouseDown(day, workerIdx, slotMin, working, e) {
+  function handleCellMouseDown(day, workerIdx, slotMin, e) {
     e.preventDefault();
-    // 왼쪽: 토글(현재 상태 반전), 오른쪽: 항상 삭제
-    const mode = e.button === 2 ? "remove" : working ? "remove" : "add";
+    // 왼쪽 버튼 = 배정, 오른쪽 버튼 = 취소
+    const mode = e.button === 2 ? "remove" : "add";
     dragRef.current = { mode };
+    setActiveSlot(slotMin);
     applySlot(day, workerIdx, slotMin, mode);
   }
 
   function handleCellMouseEnter(day, workerIdx, slotMin) {
     if (!dragRef.current) return;
+    setActiveSlot(slotMin);
     applySlot(day, workerIdx, slotMin, dragRef.current.mode);
   }
 
@@ -243,7 +251,7 @@ export default function SchedulePage({
   }
 
   // ───────────────────────────────────────────────
-  // 저장 / 초기화 / 불러오기
+  // 저장 / 초기화
   // ───────────────────────────────────────────────
   function handleSave() {
     // 변경은 이미 자동 저장되지만, 저장됐다는 확인을 보여준다
@@ -261,116 +269,104 @@ export default function SchedulePage({
     }
   }
 
-  // ── 페이지 어디에 엑셀을 떨어뜨려도 불러오기
-  function onDragEnter(e) {
-    if (!e.dataTransfer?.types?.includes("Files")) return;
-    e.preventDefault();
-    dragDepth.current++;
-    setDragFile(true);
-  }
-  function onDragLeave(e) {
-    dragDepth.current = Math.max(0, dragDepth.current - 1);
-    if (dragDepth.current === 0) setDragFile(false);
-  }
-  function onDrop(e) {
-    if (!e.dataTransfer?.files?.length) return;
-    e.preventDefault();
-    dragDepth.current = 0;
-    setDragFile(false);
-    const file = e.dataTransfer.files[0];
-    if (!isXlsxFile(file)) {
-      flash(`"${file.name}" 은 엑셀 파일이 아닙니다. .xlsx 파일을 올려주세요.`);
-      return;
-    }
-    setDroppedFile(file);
-    setImporting(true);
-  }
-
-  function openImport() {
-    setDroppedFile(null);
-    setImporting(true);
-  }
-
-  function handleApplyImport(parsed) {
-    onImportTimetable(parsed);
-    setImporting(false);
-    setDroppedFile(null);
-    flash(`${parsed.names.length}명의 시간표를 불러왔습니다.`);
-  }
-
   const totalMin = roster.reduce((sum, r) => sum + r.minutes, 0);
 
   return (
-    <div
-      className="sch-page"
-      onDragEnter={onDragEnter}
-      onDragOver={(e) => {
-        if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
-      }}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-    >
-      {/* ===== 상단 바 ===== */}
-      <div className="sch-top-bar">
-        <button className="sch-back-btn" onClick={onBack}>
-          ← 배정 화면
-        </button>
-
-        {editingTitle ? (
-          <input
-            className="sch-title-input"
-            value={titleDraft}
-            autoFocus
-            onChange={(e) => setTitleDraft(e.target.value)}
-            onBlur={() => {
-              onTitleChange(titleDraft.trim());
-              setEditingTitle(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              if (e.key === "Escape") {
-                setTitleDraft(title);
+    <div className="sch-page" {...dropProps}>
+      {/* ===== 상단 헤더 ===== */}
+      <AppHeader
+        left={
+          <>
+            <button className="hdr-btn hdr-btn-back" onClick={onBack}>
+              <Icon name="chevron-left" size={15} />
+              배정 화면
+            </button>
+            <HeaderMark />
+          </>
+        }
+        title={
+          editingTitle ? (
+            <input
+              className="hdr-title-input"
+              value={titleDraft}
+              autoFocus
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={() => {
+                onTitleChange(titleDraft.trim());
                 setEditingTitle(false);
-              }
-            }}
-          />
-        ) : (
-          <h1
-            className="sch-title"
-            title="클릭해서 제목 수정"
-            onClick={() => {
-              setTitleDraft(title);
-              setEditingTitle(true);
-            }}
-          >
-            {title || "근로시간표"}
-            <span className="sch-title-pencil">✎</span>
-          </h1>
-        )}
-
-        <div className="sch-top-actions">
-          <button className="sch-bar-btn" onClick={openImport}>
-            📂 엑셀 불러오기
-          </button>
-          {!empty && (
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") {
+                  setTitleDraft(title);
+                  setEditingTitle(false);
+                }
+              }}
+            />
+          ) : (
+            <button
+              className="hdr-title hdr-title-edit"
+              title="클릭해서 제목 수정"
+              onClick={() => {
+                setTitleDraft(title);
+                setEditingTitle(true);
+              }}
+            >
+              {title || "근로시간표"}
+              <span className="hdr-pencil">
+                <Icon name="pencil" size={13} />
+              </span>
+            </button>
+          )
+        }
+        subtitle={
+          empty ? (
+            <span className="hdr-sub-warn">
+              <Icon name="alert" size={13} />
+              시간표 없음 — 엑셀 파일을 끌어다 놓으세요
+            </span>
+          ) : (
             <>
-              <button
-                className={`sch-save-btn${saved ? " sch-save-ok" : ""}`}
-                onClick={handleSave}
-              >
-                {saved ? "✓ 저장됨" : "💾 저장"}
-              </button>
-              <button
-                className="sch-bar-btn sch-bar-danger"
-                onClick={handleClearAll}
-                title="시간표 전체 삭제"
-              >
-                🗑
-              </button>
+              {`근무자 ${rosterCount ?? roster.length}명`}
+              <span className="hdr-dot">·</span>
+              {`${minToTime(timeSlots[0])}~${minToTime(
+                timeSlots[timeSlots.length - 1] + SLOT,
+              )}`}
+              <span className="hdr-dot">·</span>
+              {`주 ${formatHours(totalMin)}`}
             </>
-          )}
-        </div>
-      </div>
+          )
+        }
+        actions={
+          <>
+            <button
+              className="hdr-btn hdr-btn-primary"
+              onClick={() => onOpenImport()}
+            >
+              <Icon name="download" size={15} />
+              엑셀 불러오기
+            </button>
+            {!empty && (
+              <>
+                <button
+                  className={`hdr-btn hdr-btn-save${saved ? " hdr-btn-saved" : ""}`}
+                  onClick={handleSave}
+                >
+                  <Icon name={saved ? "check" : "save"} size={15} />
+                  {saved ? "저장됨" : "저장"}
+                </button>
+                <button
+                  className="hdr-btn hdr-btn-icon hdr-btn-danger"
+                  onClick={handleClearAll}
+                  title="시간표 전체 삭제"
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+              </>
+            )}
+          </>
+        }
+      />
 
       {notice && <div className="sch-notice">{notice}</div>}
 
@@ -378,14 +374,17 @@ export default function SchedulePage({
       {empty ? (
         <div className="sch-empty-wrap">
           <div className="sch-empty-card">
-            <div className="sch-empty-icon">📊</div>
+            <div className="sch-empty-icon">
+              <Icon name="table" size={30} strokeWidth={1.5} />
+            </div>
             <h2 className="sch-empty-title">시간표가 비어 있습니다</h2>
             <p className="sch-empty-desc">
               근로시간표 엑셀 파일(.xlsx)을 <strong>이 화면에 끌어다 놓으면</strong>{" "}
               근무자 명단과 근무시간, 색이 한 번에 채워집니다.
             </p>
-            <button className="btn btn-primary" onClick={openImport}>
-              📂 엑셀 불러오기
+            <button className="btn btn-primary" onClick={() => onOpenImport()}>
+              <Icon name="download" size={15} />
+              엑셀 불러오기
             </button>
             <div className="sch-empty-format">
               <div className="sch-empty-format-label">이런 형태를 읽습니다</div>
@@ -428,12 +427,7 @@ export default function SchedulePage({
         <>
           {/* ===== 근무자 명단 스트립 ===== */}
           <div className="sch-roster">
-            <div className="sch-roster-label">
-              근무자 <strong>{roster.length}</strong>명
-              <span className="sch-roster-total">
-                주 {formatHours(totalMin)}
-              </span>
-            </div>
+            <div className="sch-roster-label">명단</div>
             <div className="sch-roster-chips">
               {roster.map((r) => (
                 <div key={r.name} className="sch-chip">
@@ -480,7 +474,7 @@ export default function SchedulePage({
                     title="모든 요일에서 삭제"
                     onClick={() => removeFromAllDays(r.name)}
                   >
-                    ✕
+                    <Icon name="x" size={11} />
                   </button>
                 </div>
               ))}
@@ -488,9 +482,17 @@ export default function SchedulePage({
           </div>
 
           <div className="sch-hint">
-            셀을 <strong>왼쪽 버튼으로 드래그</strong>하면 근무시간 추가,{" "}
-            <strong>오른쪽 버튼으로 드래그</strong>하면 삭제입니다. 시간이 모두
-            없어지면 그 요일에서 빠집니다.
+            <span className="sch-hint-key">
+              <span className="sch-hint-btn sch-hint-btn-left" />
+              왼클릭 = <strong>배정</strong>
+            </span>
+            <span className="sch-hint-key">
+              <span className="sch-hint-btn sch-hint-btn-right" />
+              우클릭 = <strong>취소</strong>
+            </span>
+            <span className="sch-hint-sep">·</span>
+            누른 채로 드래그하면 여러 칸이 한 번에 바뀌고, 시간이 모두 없어지면 그
+            요일에서 빠집니다.
           </div>
 
           {/* ===== 시간표 ===== */}
@@ -510,9 +512,7 @@ export default function SchedulePage({
                     >
                       <div className="sch-day-th-inner">
                         <span className="sch-day-name">{day}</span>
-                        <span className="sch-day-count">
-                          {workers.length}명
-                        </span>
+                        <span className="sch-day-count">{workers.length}명</span>
                         <button
                           className="sch-add-btn"
                           onClick={(e) => handleAddBtnClick(day, e)}
@@ -557,7 +557,10 @@ export default function SchedulePage({
                       key={slotMin}
                       className={`sch-row${onHour ? " sch-row-hour" : ""}`}
                     >
-                      <td className="sch-time-td">
+                      <td
+                        className={`sch-time-td${slotMin === activeSlot ? " sch-time-td-active" : ""}`}
+                        onMouseDown={() => setActiveSlot(slotMin)}
+                      >
                         {minToTime(slotMin)}
                         <span className="sch-time-end">
                           ~{minToTime(slotMin + SLOT)}
@@ -593,16 +596,18 @@ export default function SchedulePage({
                                   working ? { backgroundColor: w.color } : undefined
                                 }
                                 onMouseDown={(e) =>
-                                  handleCellMouseDown(day, i, slotMin, working, e)
+                                  handleCellMouseDown(day, i, slotMin, e)
                                 }
                                 onMouseEnter={() =>
                                   handleCellMouseEnter(day, i, slotMin)
                                 }
                                 onContextMenu={(e) => e.preventDefault()}
+                                /* 이름이 보이는 구간 첫 칸에만 툴팁 — 1000칸 전부에
+                                   달면 문자열 생성과 네이티브 툴팁이 드래그를 방해한다 */
                                 title={
-                                  working
+                                  isStart
                                     ? `${w.name} ${minToTime(r[0])}~${minToTime(r[1])}`
-                                    : `${w.name} ${minToTime(slotMin)}~${minToTime(slotMin + SLOT)} 추가`
+                                    : undefined
                                 }
                               >
                                 {isStart ? w.name : ""}
@@ -621,10 +626,7 @@ export default function SchedulePage({
                   <td className="sch-time-td sch-foot-label">합계</td>
                   {dayData.map(({ day, workers }) =>
                     workers.length === 0 ? (
-                      <td
-                        key={day + "-none"}
-                        className="sch-foot-td sch-day-edge"
-                      />
+                      <td key={day + "-none"} className="sch-foot-td sch-day-edge" />
                     ) : (
                       workers.map((w, i) => (
                         <td
@@ -644,15 +646,7 @@ export default function SchedulePage({
         </>
       )}
 
-      {/* ===== 파일 드래그 오버레이 ===== */}
-      {dragFile && (
-        <div className="sch-drop-overlay">
-          <div className="sch-drop-overlay-box">
-            <div className="sch-drop-overlay-icon">📥</div>
-            엑셀 파일을 여기에 놓으세요
-          </div>
-        </div>
-      )}
+      <ExcelDropOverlay show={dragging} />
 
       {/* ===== 근무자 추가 드롭다운 ===== */}
       {addingDay && dropdownPos && (
@@ -683,17 +677,6 @@ export default function SchedulePage({
             ))
           )}
         </div>
-      )}
-
-      {importing && (
-        <TimetableImportModal
-          initialFile={droppedFile}
-          onApply={handleApplyImport}
-          onClose={() => {
-            setImporting(false);
-            setDroppedFile(null);
-          }}
-        />
       )}
     </div>
   );

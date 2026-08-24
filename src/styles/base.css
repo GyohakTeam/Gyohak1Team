@@ -1,39 +1,83 @@
-/* ===== RESET & VARIABLES ===== */
+/* ===== RESET & TOKENS ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --black:    #111111;
-  --gray-900: #222222;
-  --gray-700: #444444;
-  --gray-500: #888888;
-  --gray-300: #cccccc;
-  --gray-200: #e8e8e8;
-  --gray-100: #f4f4f4;
+  /* 의미 토큰 (신규 UI) */
+  --ink:      #111214;   /* 본문·제목 */
+  --ink-2:    #52565d;   /* 보조 텍스트, 표 헤더 */
+  --ink-3:    #8a8e96;   /* 힌트, 비활성 */
+  --line:     #e2e4e8;   /* 카드·컨트롤 경계 */
+  --line-2:   #eef0f3;   /* 표 행 구분선 */
+  --surface:  #ffffff;   /* 카드 */
+  --surface-2:#f7f8fa;   /* 표 헤더, 입력 배경 */
+  --hover:    #f5f6f8;
+  --head:     #17191e;   /* 상단 헤더 (전체가 흰 화면에 기준선을 준다) */
+  --head-dim: #9aa0a8;   /* 헤더 안의 보조 텍스트 */
+
+  --blue:     #2563eb;
+  --green:    #16803c;
+  --amber:    #b45309;
+  --red:      #b42318;
+
+  --r-card: 0;      /* 구획은 선으로만 나눈다 — 카드 라운드 없음 */
+  --r:      4px;    /* 버튼·입력창 */
+  --r-sm:   3px;    /* 작은 칩 */
+
+  /* 떠 있는 요소(메뉴·토스트)에만 그림자를 쓴다 */
+  --shadow-pop:  0 4px 14px rgba(17, 18, 20, 0.12),
+                 0 1px 3px rgba(17, 18, 20, 0.08);
+
+  /* 패널 좌우 기준 여백 — 제목과 표 첫 칸이 같은 선에 놓이도록 */
+  --pad-x: 16px;
+
+  /* 예전 이름 (시간표·모달 스타일이 계속 쓴다) */
+  --black:    #111214;
+  --gray-900: #24262a;
+  --gray-700: #52565d;
+  --gray-500: #8a8e96;
+  --gray-300: #d3d6db;
+  --gray-200: #e2e4e8;
+  --gray-100: #f4f5f7;
   --white:    #ffffff;
-  --green-bg: #d4edda;
+  --green-bg: #dcf3e3;
 }
 
 body {
   font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-  background: var(--gray-100);
+  background: var(--surface);
   min-height: 100vh;
   font-size: 13px;
-  color: var(--black);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ===== VERSION ===== */
-.app-version {
-  position: fixed;
-  bottom: 8px;
-  right: 12px;
-  font-size: 11px;
-  color: var(--gray-500);
-  pointer-events: none;
+button, input, textarea, select { font-family: inherit; }
+
+/* 숫자·시간은 자리폭을 고정해 표에서 흔들리지 않게 */
+.tnum { font-variant-numeric: tabular-nums; }
+
+.icon { flex-shrink: 0; display: block; }
+
+/* ===== VERSION =====
+   예전에는 화면 오른쪽 아래에 고정돼 있었는데, 우측 열이 화면 끝까지
+   붙으면서 공정성 카드의 숫자를 덮었다 → 헤더 제목 옆으로 옮겼다. */
+.hdr-ver {
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-3);
+  vertical-align: 2px;
   user-select: none;
 }
 
 /* ===== SCROLLBAR ===== */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: var(--gray-100); }
-::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--gray-500); }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #d5d8dd;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: #b9bdc4; background-clip: padding-box; }

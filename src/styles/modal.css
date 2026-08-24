@@ -11,7 +11,7 @@
 
 .modal-box {
   background: var(--white);
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
   width: 340px;
   max-width: 95vw;
@@ -32,6 +32,9 @@
 }
 
 .modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--gray-300);
@@ -127,6 +130,9 @@
 }
 
 .modal-event-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
@@ -150,7 +156,7 @@
 
 .patch-modal {
   background: var(--white);
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.28);
   width: 520px;
   max-width: 95vw;
@@ -175,6 +181,9 @@
 .patch-title { letter-spacing: 0.03em; }
 
 .patch-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--gray-300);

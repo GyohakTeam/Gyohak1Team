@@ -11,6 +11,8 @@ for (let h = 9; h <= 23; h++) {
   }
 }
 
+import Icon from "./Icon";
+
 export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
   const [tab, setTab] = useState("select");
   const [startTime, setStartTime] = useState("09:00");
@@ -58,7 +60,9 @@ export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <span>{room} 행사 설정</span>
-          <button className="modal-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose}>
+            <Icon name="x" size={15} />
+          </button>
         </div>
 
         <div className="modal-tabs">
@@ -125,9 +129,11 @@ export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
             <div className="modal-event-list-title">등록된 행사</div>
             {roomEvents.map((ev) => (
               <div key={ev.id} className="modal-event-item">
-                <span>🚫 {ev.time}</span>
+                <span>
+                  <Icon name="ban" size={12} /> {ev.time}
+                </span>
                 <button className="modal-event-del" onClick={() => onRemove(ev.id)}>
-                  ✕
+                  <Icon name="x" size={12} />
                 </button>
               </div>
             ))}
