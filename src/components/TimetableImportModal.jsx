@@ -34,8 +34,7 @@ export default function TimetableImportModal({ initialFile, onApply, onClose }) 
     setBusy(true);
     setError("");
     try {
-      const grid = await readXlsxFile(file);
-      setParsed(parseTimetableGrid(grid));
+      setParsed(parseTimetableGrid(await readXlsxFile(file)));
       setSource(file.name);
     } catch (e) {
       setError(`엑셀을 읽지 못했습니다: ${e.message}`);
@@ -89,6 +88,9 @@ export default function TimetableImportModal({ initialFile, onApply, onClose }) 
   }
 
   const total = parsed ? parsed.names.length : 0;
+  const fromExcelCount = parsed
+    ? parsed.names.filter((n) => parsed.colors?.[n]).length
+    : 0;
   const canApply = total > 0;
 
   return (
@@ -183,14 +185,24 @@ export default function TimetableImportModal({ initialFile, onApply, onClose }) 
               </div>
 
               <div className="tt-preview-label">
-                근무자 {total}명 <span>— 색은 순서대로 자동 배정됩니다</span>
+                근무자 {total}명{" "}
+                <span>
+                  {fromExcelCount > 0
+                    ? fromExcelCount === total
+                      ? "— 색은 엑셀에 칠해진 색을 그대로 씁니다"
+                      : `— ${fromExcelCount}명은 엑셀 색, 나머지는 자동 배정`
+                    : "— 색은 순서대로 자동 배정됩니다"}
+                </span>
               </div>
               <div className="tt-preview-names">
                 {parsed.names.map((name, i) => (
                   <span
                     key={name}
                     className="tt-preview-chip"
-                    style={{ background: PALETTE[i % PALETTE.length] }}
+                    style={{
+                      background:
+                        parsed.colors?.[name] ?? PALETTE[i % PALETTE.length],
+                    }}
                   >
                     {name}
                   </span>

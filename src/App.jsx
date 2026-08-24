@@ -48,7 +48,7 @@ function readTimetable() {
         return { title: parsed.title || "", schedule: clean };
       }
     }
-  } catch {}
+  } catch { }
   // 기본값은 빈 시간표 — 명단은 시간표 페이지에서 엑셀로 불러온다
   return { title: "", schedule: emptySchedule() };
 }
@@ -133,8 +133,9 @@ export default function App() {
 
   // ===== 엑셀 시간표 불러오기 =====
   const importTimetable = useCallback(
-    ({ title: newTitle, schedule: newSchedule, names }) => {
-      resetRoster(names); // 명단 순서대로 색 배정 (쓰던 이름은 색 유지)
+    ({ title: newTitle, schedule: newSchedule, names, colors }) => {
+      // 엑셀 셀 색이 있으면 그 색으로, 없으면 명단 순서대로 팔레트에서 배정
+      resetRoster(names, colors);
       setSchedule(newSchedule);
       setTitle(newTitle || "");
       resetAssignments(); // 이전 명단·배정은 새 시간표와 맞지 않는다
@@ -180,7 +181,7 @@ export default function App() {
     clearRoster();
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch {}
+    } catch { }
     setSchedule(emptySchedule());
     setTitle("");
     resetAssignments();
@@ -324,7 +325,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 2, title, schedule }));
-    } catch {}
+    } catch { }
   }, [schedule, title]);
 
   // 스케줄(시간표 페이지)이 바뀔 때 WorkerPanel의 workers 자동 동기화
@@ -532,7 +533,7 @@ export default function App() {
           <>
             <button className="hdr-btn hdr-btn-primary" onClick={() => openImport()}>
               <Icon name="download" size={15} />
-              엑셀 불러오기
+              시간표 불러오기
             </button>
             <button
               className="hdr-btn hdr-btn-primary"

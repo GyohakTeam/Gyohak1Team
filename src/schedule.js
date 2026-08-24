@@ -101,15 +101,23 @@ export function registerNames(names) {
 
 /**
  * 명단을 통째로 갈아끼운다 (엑셀 새로 불러오기).
- * 이미 쓰던 이름은 색을 그대로 유지해서 눈에 익은 색이 안 바뀌게 하고,
+ * preferred({ 이름: "#rrggbb" }) 가 있으면 그게 최우선 — 엑셀 시간표에서 읽은 셀 색이다.
+ * 그 다음은 이미 쓰던 색을 그대로 유지해서 눈에 익은 색이 안 바뀌게 하고,
  * 없어진 이름의 색은 반납해서 팔레트가 촘촘하게 유지된다.
  */
-export function resetRoster(names) {
+export function resetRoster(names, preferred = null) {
   const old = load();
   const next = new Map();
   const used = new Set();
   for (const name of names) {
     if (!name || next.has(name)) continue;
+    // 엑셀 색은 중복이어도 그대로 쓴다 (원본이 그렇게 칠해져 있으면 그게 맞다)
+    const fromExcel = normalizeHex(preferred && preferred[name]);
+    if (fromExcel) {
+      next.set(name, fromExcel);
+      used.add(fromExcel);
+      continue;
+    }
     const prev = old.get(name);
     const color = prev && !used.has(prev) ? prev : nextFreeColor(used);
     next.set(name, color);
@@ -117,6 +125,13 @@ export function resetRoster(names) {
   }
   roster = next;
   persist();
+}
+
+/** "#RRGGBB" / "RRGGBB" -> "#rrggbb", 그 외엔 null */
+function normalizeHex(value) {
+  if (typeof value !== "string") return null;
+  const hex = value.trim().replace(/^#/, "");
+  return /^[0-9a-fA-F]{6}$/.test(hex) ? `#${hex.toLowerCase()}` : null;
 }
 
 export function setPersonColor(name, color) {

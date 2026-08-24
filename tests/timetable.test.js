@@ -186,9 +186,90 @@ function checkParsed(suite, parsed) {
 // 1) .xlsx 파일 경로
 // ───────────────────────────────────────────────
 const buf = readFileSync(XLSX_PATH);
-const grid = await gridFromArrayBuffer(new Uint8Array(buf));
-const fromXlsx = parseTimetableGrid(grid);
+const loaded = await gridFromArrayBuffer(new Uint8Array(buf));
+const grid = loaded.grid;
+const fromXlsx = parseTimetableGrid(loaded);
 checkParsed(".xlsx 파일", fromXlsx);
+
+// ───────────────────────────────────────────────
+// 1-1) 셀 배경색 -> 근무자 색
+// ───────────────────────────────────────────────
+const EXPECTED_COLORS = {
+  예인: "#00e65c",
+  동균: "#f2f2f2",
+  소은: "#f4b183",
+  선우: "#b7dee8",
+  준호: "#6fa8ff",
+  민경: "#00e5e5",
+  예빈: "#ff8bd1",
+  유민: "#d9a0f3",
+  예원: "#fff200",
+  하준: "#b7f34a",
+  주하: "#ffd966",
+  서영: "#ff8a7a",
+  지상: "#b4a7d6",
+};
+
+test("엑셀 색", "13명 전원의 색을 읽는다", () => {
+  assertEqual(Object.keys(fromXlsx.colors).length, 13);
+});
+
+test("엑셀 색", "이름별 색이 엑셀 셀 배경색과 일치한다", () => {
+  for (const [name, color] of Object.entries(EXPECTED_COLORS)) {
+    assertEqual(fromXlsx.colors[name], color, name);
+  }
+});
+
+test("엑셀 색", "색 배열은 grid 와 같은 좌표계다", () => {
+  // 이름이 있는 칸에는 색이, 시간 헤더 아래 빈 칸에는 색이 없어야 한다
+  let painted = 0;
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      const name = String(grid[r][c] ?? "").trim();
+      const color = loaded.colors?.[r]?.[c] ?? null;
+      if (Object.hasOwn(EXPECTED_COLORS, name)) {
+        assertEqual(color, EXPECTED_COLORS[name], `${r + 1}행 ${c + 1}열 ${name}`);
+        painted++;
+      }
+    }
+  }
+  if (painted < 500) throw new Error(`색칠된 이름 칸이 ${painted}개뿐입니다`);
+});
+
+test("엑셀 색", "복붙(TSV)에는 색 정보가 없다", () => {
+  const p = parseTimetableGrid(
+    gridFromTsv(["아무\t내용", "월\t화", "09:00~10:00\t가\t나"].join("\n")),
+  );
+  assertEqual(p.colors, {});
+});
+
+test("엑셀 색", "흰색 채우기는 색으로 치지 않는다", () => {
+  const g = [
+    ["", "월", "화"],
+    ["09:00~10:00", "가", "나"],
+  ];
+  const colors = [
+    [null, null, null],
+    [null, "#ffffff", "#ffd966"],
+  ];
+  const p = parseTimetableGrid({ grid: g, colors });
+  assertEqual(p.colors, { 나: "#ffd966" });
+});
+
+test("엑셀 색", "한 사람 칸에 색이 섞이면 최다 득표색을 쓴다", () => {
+  const g = [
+    ["", "월", "화"],
+    ["09:00~10:00", "가", "가"],
+    ["10:00~11:00", "가", ""],
+  ];
+  const colors = [
+    [null, null, null],
+    [null, "#111111", "#222222"],
+    [null, "#222222", null],
+  ];
+  const p = parseTimetableGrid({ grid: g, colors });
+  assertEqual(p.colors, { 가: "#222222" });
+});
 
 // ───────────────────────────────────────────────
 // 2) 복붙(TSV) 경로 — 같은 grid를 엑셀 복사 형태로 되돌려서 확인

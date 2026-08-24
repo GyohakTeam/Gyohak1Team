@@ -89,7 +89,8 @@ export function formatHours(min) {
  */
 export async function gridFromArrayBuffer(buf) {
   const { read, utils } = await import("xlsx");
-  const wb = read(buf, { type: "array" });
+  // cellStyles: 셀 배경색을 읽으려면 필요하다 (근무자 색을 엑셀에서 가져온다)
+  const wb = read(buf, { type: "array", cellStyles: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   if (!ws) throw new Error("엑셀에서 시트를 찾을 수 없습니다.");
   const rows = utils.sheet_to_json(ws, {
@@ -98,10 +99,58 @@ export async function gridFromArrayBuffer(buf) {
     defval: "",
     blankrows: true,
   });
-  return rows.map((r) => (r || []).map((c) => (c == null ? "" : String(c))));
+  const grid = rows.map((r) => (r || []).map((c) => (c == null ? "" : String(c))));
+  return { grid, colors: colorGridFromSheet(ws, utils) };
 }
 
-/** File(.xlsx) -> grid */
+/**
+ * 시트의 셀 배경색을 grid 와 같은 좌표계의 2차원 배열로 뽑는다.
+ *
+ * sheet_to_json(header:1) 은 시트 범위(!ref)의 시작점을 [0][0] 으로 당겨서 내놓기 때문에,
+ * 여기서도 같은 오프셋을 빼야 grid[r][c] 와 colors[r][c] 가 같은 셀을 가리킨다.
+ */
+function colorGridFromSheet(ws, utils) {
+  const ref = ws["!ref"];
+  if (!ref) return null;
+  let range;
+  try {
+    range = utils.decode_range(ref);
+  } catch {
+    return null;
+  }
+  const colors = [];
+  let any = false;
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const row = [];
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const c = ws[utils.encode_cell({ r: R, c: C })];
+      const color = fillColorOf(c);
+      if (color) any = true;
+      row.push(color);
+    }
+    colors.push(row);
+  }
+  return any ? colors : null;
+}
+
+/** 셀 -> "#rrggbb" (칠하지 않았거나 흰색이면 null) */
+function fillColorOf(cell) {
+  const s = cell && cell.s;
+  if (!s) return null;
+  if (s.patternType && s.patternType !== "solid") return null;
+  const raw = s.fgColor && s.fgColor.rgb;
+  if (typeof raw !== "string") return null; // theme/indexed 색은 rgb 로 안 나오면 포기
+  let hex = raw.trim().replace(/^#/, "").toUpperCase();
+  if (hex.length === 8) {
+    if (hex.slice(0, 2) === "00") return null; // 완전 투명
+    hex = hex.slice(2);
+  }
+  if (!/^[0-9A-F]{6}$/.test(hex)) return null;
+  if (hex === "FFFFFF") return null; // 흰색 = 안 칠한 것으로 본다
+  return `#${hex.toLowerCase()}`;
+}
+
+/** File(.xlsx) -> { grid, colors } */
 export async function readXlsxFile(file) {
   const ab = await file.arrayBuffer();
   return await gridFromArrayBuffer(new Uint8Array(ab));
@@ -133,6 +182,17 @@ function cell(grid, r, c) {
   return v == null ? "" : String(v).trim();
 }
 
+/**
+ * 색 문자열을 "#rrggbb" 로 맞춘다.
+ * 흰색은 "안 칠한 칸"으로 본다 (근무자 색이 흰색이면 시간표에서 안 보인다).
+ */
+function normalizeCellColor(value) {
+  if (typeof value !== "string") return null;
+  const hex = value.trim().replace(/^#/, "").toLowerCase();
+  if (!/^[0-9a-f]{6}$/.test(hex) || hex === "ffffff") return null;
+  return `#${hex}`;
+}
+
 function normalizeName(raw) {
   return String(raw).trim().replace(/\s+/g, " ");
 }
@@ -146,17 +206,24 @@ function parseTimeCell(text) {
 }
 
 /**
- * grid -> { title, schedule, names, dayCounts, warnings }
+ * grid -> { title, schedule, names, colors, dayCounts, warnings }
+ *
+ * 첫 인자는 2차원 문자열 배열이거나, 색까지 같이 읽은 { grid, colors } 다.
+ * (colors 는 grid 와 같은 좌표계의 "#rrggbb" | null 2차원 배열)
  *
  * schedule: { 월: [{ name, workTimes }], 화: [...], ... }  (없는 요일은 빈 배열)
  * names:    최초 등장 순서(요일 -> 시간 -> 열)로 정렬된 전체 명단 = 색 배정 순서
+ * colors:   { 이름: "#rrggbb" } — 엑셀에서 셀 배경색을 읽어낸 사람만 들어간다
  */
-export function parseTimetableGrid(grid) {
+export function parseTimetableGrid(input) {
+  const grid = Array.isArray(input) ? input : input && input.grid;
+  const colorGrid = (Array.isArray(input) ? null : input && input.colors) || null;
   const warnings = [];
   const empty = {
     title: "",
     schedule: Object.fromEntries(DAYS.map((d) => [d, []])),
     names: [],
+    colors: {},
     dayCounts: Object.fromEntries(DAYS.map((d) => [d, 0])),
     warnings,
   };
@@ -276,6 +343,8 @@ export function parseTimetableGrid(grid) {
   const dayCounts = Object.fromEntries(DAYS.map((d) => [d, 0]));
   const nameOrder = [];
   const seenNames = new Set();
+  // 이름 -> { "#rrggbb": 셀 개수 }  (한 사람 셀에 색이 섞여 있으면 최다 득표색을 쓴다)
+  const colorVotes = new Map();
 
   for (const { day, from, to } of blocks) {
     // rowNames[i] = i번째 시간행에 근무하는 이름 Set
@@ -294,6 +363,12 @@ export function parseTimetableGrid(grid) {
         if (!seenNames.has(name)) {
           seenNames.add(name);
           nameOrder.push(name);
+        }
+        const color = normalizeCellColor(colorGrid && colorGrid[r] && colorGrid[r][c]);
+        if (color) {
+          if (!colorVotes.has(name)) colorVotes.set(name, new Map());
+          const votes = colorVotes.get(name);
+          votes.set(color, (votes.get(color) || 0) + 1);
         }
       }
       return set;
@@ -346,5 +421,20 @@ export function parseTimetableGrid(grid) {
     warnings.push("근무자 이름을 하나도 찾지 못했습니다.");
   }
 
-  return { title, schedule, names: nameOrder, dayCounts, warnings };
+  const colors = {};
+  for (const name of nameOrder) {
+    const votes = colorVotes.get(name);
+    if (!votes) continue;
+    let best = null;
+    let bestCount = 0;
+    for (const [color, count] of votes) {
+      if (count > bestCount) {
+        best = color;
+        bestCount = count;
+      }
+    }
+    if (best) colors[name] = best;
+  }
+
+  return { title, schedule, names: nameOrder, colors, dayCounts, warnings };
 }
