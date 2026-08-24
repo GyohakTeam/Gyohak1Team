@@ -15,6 +15,8 @@ export default function WorkerPanel({
   onUpdateWorker,
   onSelectWorker,
   onLoadDay,
+  scheduleEmpty,
+  onGoSchedule,
   showStatus,
   showReassignBanner,
   onReAssign,
@@ -29,6 +31,18 @@ export default function WorkerPanel({
         <div className="panel-title">출근자 명단</div>
 
         <DaySelector selectedDay={selectedDay} onLoadDay={onLoadDay} />
+
+        {scheduleEmpty && (
+          <div className="worker-empty-cta">
+            <div className="worker-empty-cta-text">
+              등록된 시간표가 없습니다. 근로시간표 엑셀 파일을 불러오면 요일별
+              출근자가 자동으로 채워집니다.
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={onGoSchedule}>
+              📅 시간표에서 엑셀 불러오기
+            </button>
+          </div>
+        )}
 
         <WorkerForm onAddWorker={onAddWorker} showStatus={showStatus} />
 
@@ -60,7 +74,9 @@ export default function WorkerPanel({
               {workers.length === 0 ? (
                 <tr>
                   <td colSpan="4" className="empty-state">
-                    출근자를 추가하세요
+                    {scheduleEmpty
+                      ? "시간표를 불러온 뒤 요일을 선택하세요"
+                      : "요일을 선택하거나 출근자를 추가하세요"}
                   </td>
                 </tr>
               ) : (

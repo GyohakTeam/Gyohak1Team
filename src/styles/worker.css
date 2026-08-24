@@ -214,3 +214,22 @@
   transition: background 0.12s;
 }
 .reassign-btn-light:hover { background: var(--gray-100); }
+
+/* ===== 시간표 없음 안내 ===== */
+.worker-empty-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fff8e1;
+  border: 1px solid #f0d999;
+  border-left: 3px solid #d99a00;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.worker-empty-cta-text {
+  font-size: 11.5px;
+  color: #7a5300;
+  line-height: 1.6;
+}

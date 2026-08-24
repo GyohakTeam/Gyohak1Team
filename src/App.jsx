@@ -6,35 +6,59 @@ import {
   computeEffectiveSlots,
   canInspect,
 } from "./utils";
-import { SCHEDULE, DAYS, SCHEDULE_VERSION } from "./schedule";
+import {
+  DAYS,
+  clearRoster,
+  emptySchedule,
+  isScheduleEmpty,
+  registerNames,
+  resetRoster,
+} from "./schedule";
 import ClassroomPanel from "./components/classroom/ClassroomPanel";
 import WorkerPanel from "./components/worker/WorkerPanel";
 import SchedulePage from "./components/SchedulePage";
 import PatchNotesModal from "./components/PatchNotesModal";
 
-function initSchedule() {
+const STORAGE_KEY = "gyohak-timetable";
+
+/**
+ * 저장된 시간표를 읽는다.
+ * 버전이 다르다고 저장 내용을 버리지는 않는다 — 예전에는 상수 하나만 올려도
+ * 사용자가 손으로 고친 시간표가 조용히 전부 사라졌다.
+ */
+function readTimetable() {
   try {
-    const saved = localStorage.getItem("gyohak-schedule");
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.version === SCHEDULE_VERSION) return parsed.data;
+      if (parsed?.v === 2 && parsed.schedule) {
+        const clean = emptySchedule();
+        for (const day of DAYS) {
+          clean[day] = (parsed.schedule[day] || [])
+            .filter(
+              (w) => w?.name && Array.isArray(w.workTimes) && w.workTimes.length,
+            )
+            .map((w) => ({ name: w.name, workTimes: [...w.workTimes] }));
+        }
+        return { title: parsed.title || "", schedule: clean };
+      }
     }
   } catch {}
-  // SCHEDULE 깊은 복사
-  const clone = {};
-  for (const day of DAYS) {
-    clone[day] = (SCHEDULE[day] || []).map((w) => ({
-      name: w.name,
-      workTimes: [...w.workTimes],
-    }));
-  }
-  return clone;
+  // 기본값은 빈 시간표 — 명단은 시간표 페이지에서 엑셀로 불러온다
+  return { title: "", schedule: emptySchedule() };
+}
+
+let _initial = null;
+function initial() {
+  if (!_initial) _initial = readTimetable();
+  return _initial;
 }
 
 export default function App() {
   const [page, setPage] = useState("main"); // 'main' | 'schedule'
   const [showPatchNotes, setShowPatchNotes] = useState(false);
-  const [schedule, setSchedule] = useState(initSchedule);
+  const [schedule, setSchedule] = useState(() => initial().schedule);
+  const [title, setTitle] = useState(() => initial().title);
 
   const [classrooms, setClassrooms] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -70,18 +94,38 @@ export default function App() {
     setSchedule(newSchedule);
   }, []);
 
-  // ===== CLEAR SCHEDULE CACHE =====
-  const clearScheduleCache = useCallback(() => {
-    localStorage.removeItem("gyohak-schedule");
-    const clone = {};
-    for (const day of DAYS) {
-      clone[day] = (SCHEDULE[day] || []).map((w) => ({
-        name: w.name,
-        workTimes: [...w.workTimes],
-      }));
-    }
-    setSchedule(clone);
+  // ===== 배정 상태 초기화 (시간표가 통째로 바뀔 때) =====
+  const resetAssignments = useCallback(() => {
+    setWorkers([]);
+    setSelectedWorkerId(null);
+    setSelectedDay(null);
+    setShowReassignBanner(false);
+    workerCounterRef.current = 1;
+    pendingRemovedIdsRef.current = [];
+    setClassrooms((prev) => prev.map((c) => ({ ...c, inspectorId: null })));
   }, []);
+
+  // ===== 엑셀 시간표 불러오기 =====
+  const importTimetable = useCallback(
+    ({ title: newTitle, schedule: newSchedule, names }) => {
+      resetRoster(names); // 명단 순서대로 색 배정 (쓰던 이름은 색 유지)
+      setSchedule(newSchedule);
+      setTitle(newTitle || "");
+      resetAssignments(); // 이전 명단·배정은 새 시간표와 맞지 않는다
+    },
+    [resetAssignments],
+  );
+
+  // ===== 시간표 전체 비우기 =====
+  const clearTimetable = useCallback(() => {
+    clearRoster();
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    setSchedule(emptySchedule());
+    setTitle("");
+    resetAssignments();
+  }, [resetAssignments]);
 
   // ===== STATUS =====
   const showStatus = useCallback((text, type) => {
@@ -126,6 +170,15 @@ export default function App() {
     (day) => {
       const list = schedule[day];
       if (!list) return;
+      if (list.length === 0) {
+        showStatus(
+          isScheduleEmpty(schedule)
+            ? "시간표가 비어 있습니다 — 📅 시간표에서 엑셀 파일을 불러오세요."
+            : `${day}요일에 등록된 근무자가 없습니다.`,
+          "warn",
+        );
+        return;
+      }
       setClassrooms((prev) => prev.map((c) => ({ ...c, inspectorId: null })));
       setSelectedWorkerId(null);
       workerCounterRef.current = 1;
@@ -147,6 +200,7 @@ export default function App() {
   // ===== WORKERS =====
   const addWorker = useCallback((name, time1, time2) => {
     const workTimes = time2 ? [time1, time2] : [time1];
+    registerNames([name]); // 시간표에 없는 이름도 색을 받는다
     setWorkers((prev) => [
       ...prev,
       { id: uid(), number: workerCounterRef.current++, name, workTimes },
@@ -213,13 +267,12 @@ export default function App() {
     setEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
-  // schedule 변경 시 localStorage 자동 저장
+  // 시간표 변경 시 localStorage 자동 저장 (색은 schedule.js 가 따로 저장)
   useEffect(() => {
-    localStorage.setItem(
-      "gyohak-schedule",
-      JSON.stringify({ version: SCHEDULE_VERSION, data: schedule }),
-    );
-  }, [schedule]);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 2, title, schedule }));
+    } catch {}
+  }, [schedule, title]);
 
   // 스케줄(시간표 페이지)이 바뀔 때 WorkerPanel의 workers 자동 동기화
   useEffect(() => {
@@ -372,9 +425,12 @@ export default function App() {
     return (
       <SchedulePage
         schedule={schedule}
+        title={title}
         onScheduleChange={handleScheduleChange}
+        onTitleChange={setTitle}
+        onImportTimetable={importTimetable}
         onBack={() => setPage("main")}
-        onClearCache={clearScheduleCache}
+        onClearAll={clearTimetable}
       />
     );
   }
@@ -430,13 +486,15 @@ export default function App() {
           onUpdateWorker={updateWorker}
           onSelectWorker={selectWorker}
           onLoadDay={loadDay}
+          scheduleEmpty={isScheduleEmpty(schedule)}
+          onGoSchedule={() => setPage("schedule")}
           showStatus={showStatus}
           showReassignBanner={showReassignBanner}
           onReAssign={handleReAssign}
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.7.1</div>
+      <div className="app-version">v1.8.0</div>
     </>
   );
 }
