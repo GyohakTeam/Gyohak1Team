@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { parseRange } from "../utils";
+import Icon from "./Icon";
+import Modal from "./Modal";
 
 const TIMES = [];
 for (let h = 9; h <= 23; h++) {
@@ -10,8 +12,6 @@ for (let h = 9; h <= 23; h++) {
     TIMES.push(`${hh}:${mm}`);
   }
 }
-
-import Icon from "./Icon";
 
 export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
   const [tab, setTab] = useState("select");
@@ -56,32 +56,46 @@ export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <span>{room} 행사 설정</span>
-          <button className="modal-close-btn" onClick={onClose}>
-            <Icon name="x" size={15} />
+    <Modal
+      icon="calendar-plus"
+      title={`${room} 행사 설정`}
+      subtitle="등록한 시간은 점검 가능 시간에서 제외됩니다"
+      size="sm"
+      onClose={onClose}
+      footer={
+        <div className="modal-footer-actions">
+          <button className="btn btn-secondary" onClick={onClose}>
+            닫기
           </button>
         </div>
+      }
+    >
+      <div className="modal-tabs">
+        <button
+          className={`modal-tab${tab === "select" ? " active" : ""}`}
+          onClick={() => {
+            setTab("select");
+            setError("");
+          }}
+        >
+          <Icon name="clock" size={15} />
+          시간 선택
+        </button>
+        <button
+          className={`modal-tab${tab === "direct" ? " active" : ""}`}
+          onClick={() => {
+            setTab("direct");
+            setError("");
+          }}
+        >
+          <Icon name="pencil" size={15} />
+          직접 입력
+        </button>
+      </div>
 
-        <div className="modal-tabs">
-          <button
-            className={`modal-tab${tab === "select" ? " active" : ""}`}
-            onClick={() => { setTab("select"); setError(""); }}
-          >
-            시간 선택
-          </button>
-          <button
-            className={`modal-tab${tab === "direct" ? " active" : ""}`}
-            onClick={() => { setTab("direct"); setError(""); }}
-          >
-            직접 입력
-          </button>
-        </div>
-
-        <div className="modal-body">
-          {tab === "select" ? (
+      <div className="modal-section">
+        {tab === "select" ? (
+          <>
             <div className="modal-time-select-row">
               <select
                 className="modal-time-select"
@@ -102,11 +116,15 @@ export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
-              <button className="btn btn-primary btn-sm" onClick={handleAddSelect}>
+              <button className="btn btn-primary" onClick={handleAddSelect}>
+                <Icon name="plus" size={15} />
                 추가
               </button>
             </div>
-          ) : (
+            <div className="modal-hint">30분 단위로 고를 수 있습니다.</div>
+          </>
+        ) : (
+          <>
             <div className="modal-direct-row">
               <input
                 className="form-input"
@@ -116,30 +134,48 @@ export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
                 onKeyDown={(e) => e.key === "Enter" && handleAddDirect()}
                 autoFocus
               />
-              <button className="btn btn-primary btn-sm" onClick={handleAddDirect}>
+              <button className="btn btn-primary" onClick={handleAddDirect}>
+                <Icon name="plus" size={15} />
                 추가
               </button>
             </div>
-          )}
-          {error && <div className="modal-error">{error}</div>}
-        </div>
-
-        {roomEvents.length > 0 && (
-          <div className="modal-event-list">
-            <div className="modal-event-list-title">등록된 행사</div>
-            {roomEvents.map((ev) => (
-              <div key={ev.id} className="modal-event-item">
-                <span>
-                  <Icon name="ban" size={12} /> {ev.time}
-                </span>
-                <button className="modal-event-del" onClick={() => onRemove(ev.id)}>
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            ))}
+            <div className="modal-hint">
+              30분 단위가 아닌 시간은 이곳에 직접 적어주세요.
+            </div>
+          </>
+        )}
+        {error && (
+          <div className="modal-error">
+            <Icon name="alert" size={14} />
+            {error}
           </div>
         )}
       </div>
-    </div>
+
+      {roomEvents.length > 0 && (
+        <div className="modal-section">
+          <div className="modal-section-head">
+            <Icon name="ban" size={14} />
+            등록된 행사 {roomEvents.length}건
+          </div>
+          {roomEvents.map((ev) => (
+            <div key={ev.id} className="modal-event-item">
+              <span>
+                <Icon name="ban" size={14} />
+                {ev.time}
+              </span>
+              <button
+                className="modal-event-del"
+                onClick={() => onRemove(ev.id)}
+                title="삭제"
+                aria-label="행사 삭제"
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
   );
 }

@@ -18,6 +18,7 @@ import ClassroomPanel from "./components/classroom/ClassroomPanel";
 import WorkerPanel from "./components/worker/WorkerPanel";
 import SchedulePage from "./components/SchedulePage";
 import PatchNotesModal from "./components/PatchNotesModal";
+import { PATCH_NOTES } from "./patchNotes";
 import TimetableImportModal from "./components/TimetableImportModal";
 import AppHeader, { HeaderMark } from "./components/AppHeader";
 import Icon from "./components/Icon";
@@ -510,7 +511,7 @@ export default function App() {
         title={
           <div className="hdr-title">
             강의실 점검 배정 시스템
-            <span className="hdr-ver">v1.9.0</span>
+            <span className="hdr-ver">v{PATCH_NOTES[0]?.version}</span>
           </div>
         }
         subtitle={

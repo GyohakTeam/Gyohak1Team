@@ -1,6 +1,6 @@
 import { useState } from "react";
-
 import Icon from "./Icon";
+import Modal from "./Modal";
 
 export default function EventListModal({ events, onClose }) {
   const [copied, setCopied] = useState(false);
@@ -18,32 +18,43 @@ export default function EventListModal({ events, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <span>행사 목록</span>
-          <button className="modal-close-btn" onClick={onClose}>
-            <Icon name="x" size={15} />
-          </button>
-        </div>
-
-        <div className="event-list-body">
-          {lines.length === 0 ? (
-            <div className="event-list-empty">등록된 행사가 없습니다.</div>
-          ) : (
-            <pre className="event-list-pre">{text}</pre>
+    <Modal
+      icon="clipboard-list"
+      title="행사 목록"
+      subtitle={lines.length > 0 ? `${lines.length}건 등록됨` : undefined}
+      size="md"
+      onClose={onClose}
+      footer={
+        <>
+          {lines.length > 0 && (
+            <span className="modal-footer-note">
+              복사하면 강의실 : 시간 형식으로 붙여넣을 수 있습니다.
+            </span>
           )}
-        </div>
-
-        {lines.length > 0 && (
-          <div className="event-list-footer">
-            <button className="btn btn-primary" onClick={handleCopy}>
-              <Icon name={copied ? "check" : "copy"} size={14} />
-              {copied ? "복사됨" : "복사"}
+          <div className="modal-footer-actions">
+            <button className="btn btn-secondary" onClick={onClose}>
+              닫기
             </button>
+            {lines.length > 0 && (
+              <button className="btn btn-primary" onClick={handleCopy}>
+                <Icon name={copied ? "check" : "copy"} size={15} />
+                {copied ? "복사됨" : "복사"}
+              </button>
+            )}
           </div>
+        </>
+      }
+    >
+      <div className="modal-section">
+        {lines.length === 0 ? (
+          <div className="event-list-empty">
+            <Icon name="calendar-plus" size={26} strokeWidth={1.5} />
+            등록된 행사가 없습니다.
+          </div>
+        ) : (
+          <pre className="event-list-pre">{text}</pre>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
