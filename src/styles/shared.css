@@ -236,6 +236,8 @@ tr:last-child td { border-bottom: none; }
 .menu-pop {
   position: fixed;
   z-index: 200;
+  width: max-content;
+  min-width: 168px;
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -256,9 +258,10 @@ tr:last-child td { border-bottom: none; }
   color: var(--ink);
   font-size: 12.5px;
   text-align: left;
+  white-space: nowrap;
   cursor: pointer;
 }
-.menu-item .icon { color: var(--ink-3); }
+.menu-item .icon { flex: none; color: var(--ink-3); }
 .menu-item:hover { background: var(--hover); }
 .menu-item:hover .icon { color: var(--ink-2); }
 .menu-item-danger { color: var(--red); }

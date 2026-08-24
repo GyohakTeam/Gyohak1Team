@@ -19,15 +19,16 @@ export default function Menu({ items, label = "더보기", align = "right", trig
   useLayoutEffect(() => {
     if (!open || !btnRef.current) return;
     const r = btnRef.current.getBoundingClientRect();
-    const width = 168;
     const height = list.length * 32 + 10;
-    const left =
-      align === "right"
-        ? Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8))
-        : Math.min(r.left, window.innerWidth - width - 8);
     const below = r.bottom + 4;
     const top = below + height > window.innerHeight - 8 ? r.top - height - 4 : below;
-    setPos({ top, left, width });
+    // 폭은 라벨 길이에 맞춰 CSS 가 정한다(고정 폭은 긴 항목을 줄바꿈시켰다).
+    // 그래서 우측 정렬은 left 계산 대신 right 로 앵커링한다 — 폭을 몰라도 어긋나지 않는다.
+    setPos(
+      align === "right"
+        ? { top, right: Math.max(8, window.innerWidth - r.right), maxWidth: r.right - 8 }
+        : { top, left: Math.max(8, r.left), maxWidth: window.innerWidth - r.left - 8 },
+    );
   }, [open, align, list.length]);
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function Menu({ items, label = "더보기", align = "right", trig
         <div
           ref={menuRef}
           className="menu-pop"
-          style={{ top: pos.top, left: pos.left, width: pos.width }}
+          style={pos}
           role="menu"
         >
           {list.map((it, i) => (

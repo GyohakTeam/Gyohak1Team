@@ -193,6 +193,28 @@ function normalizeCellColor(value) {
   return `#${hex}`;
 }
 
+/** 시간표 아래에 붙는 요약 라벨 (여기서 표가 끝난 것으로 본다) */
+const SUMMARY_LABEL = /^(합계|총계|소계|총합|계|비고|참고|메모|기타)$/;
+
+/** r행의 [from, to] 열 범위에 내용이 있는지 */
+function rowHasContent(grid, r, from, to) {
+  for (let c = from; c <= to; c++) if (cell(grid, r, c)) return true;
+  return false;
+}
+
+/** fromRow(포함) 아래에 내용이 남아 있는지 */
+function hasContentBelow(grid, fromRow, maxCol) {
+  for (let r = Math.max(0, fromRow); r < grid.length; r++) {
+    if (rowHasContent(grid, r, 0, maxCol)) return true;
+  }
+  return false;
+}
+
+/** 이름 같지 않은 값 (숫자·공백이 섞였거나 너무 긴 값) */
+function looksUnlikeName(name) {
+  return /\d/.test(name) || /\s/.test(name) || name.length > 5;
+}
+
 function normalizeName(raw) {
   return String(raw).trim().replace(/\s+/g, " ");
 }
@@ -235,9 +257,11 @@ export function parseTimetableGrid(input) {
 
   const maxCol = Math.max(0, ...grid.map((r) => (r ? r.length : 0))) - 1;
 
-  // ── 1. 요일 헤더 행 찾기: 요일 이름이 2개 이상 있는 첫 행
-  let headerRow = -1;
-  let dayCols = [];
+  // ── 1. 요일 헤더 행 찾기
+  // "요일이 2개 이상 있는 첫 행"만 보면, 위쪽에 요일이 들어간 다른 표(예: 요일별 강의실 수)가
+  // 있을 때 그 표를 시간표로 착각한다. 후보를 모두 모은 뒤 바로 아래에 시간 행이 이어지는
+  // 후보를 고른다. (점수가 같으면 위쪽 후보)
+  const headerCandidates = [];
   for (let r = 0; r < grid.length; r++) {
     const found = [];
     for (let c = 0; c <= maxCol; c++) {
@@ -247,17 +271,39 @@ export function parseTimetableGrid(input) {
       }
     }
     if (found.length >= 2) {
-      headerRow = r;
-      dayCols = found.sort((a, b) => a.col - b.col);
-      break;
+      found.sort((a, b) => a.col - b.col);
+      headerCandidates.push({ row: r, days: found });
     }
   }
-  if (headerRow === -1) {
+  if (headerCandidates.length === 0) {
     warnings.push(
       "요일 헤더(월·화·수·목·금)를 찾지 못했습니다. 엑셀 표 전체(제목·요일·시간 행 포함)를 선택했는지 확인하세요.",
     );
     return empty;
   }
+
+  let header = headerCandidates[0];
+  let bestScore = -1;
+  for (const cand of headerCandidates) {
+    const left = Math.max(1, cand.days[0].col);
+    let timeHits = 0;
+    for (let r = cand.row + 1; r < Math.min(grid.length, cand.row + 4); r++) {
+      for (let c = 0; c < left; c++) {
+        if (parseTimeCell(cell(grid, r, c))) {
+          timeHits++;
+          break;
+        }
+      }
+    }
+    // 아래에 시간 행이 이어지는지가 요일 개수보다 훨씬 중요하다
+    const score = (timeHits > 0 ? 100 : 0) + cand.days.length;
+    if (score > bestScore) {
+      bestScore = score;
+      header = cand;
+    }
+  }
+  const headerRow = header.row;
+  const dayCols = header.days;
 
   // ── 2. 시간 열 찾기: 첫 요일 열보다 왼쪽에서 시간 셀이 가장 많은 열
   const firstDayCol = dayCols[0].col;
@@ -275,21 +321,49 @@ export function parseTimetableGrid(input) {
   }
 
   // ── 3. 시간 행 수집 (30분 단위나 특정 시작·종료 시각을 가정하지 않는다)
+  // 시간표 아래에 다른 표나 메모가 붙어 있을 수 있으므로 표가 끝나는 지점에서 끊는다.
+  //   - "합계 / 비고" 같은 요약 라벨
+  //   - 시간이 다시 앞으로 돌아가는 행 (시간표의 시간은 아래로 갈수록 늘어난다)
+  //   - 완전히 빈 줄이 3줄 이상 이어지는 지점
   const timeRows = [];
+  let blankRun = 0;
+  let cutAt = -1;
   for (let r = headerRow + 1; r < grid.length; r++) {
     const raw = cell(grid, r, timeCol);
-    if (!raw) continue;
+    if (!raw) {
+      if (rowHasContent(grid, r, firstDayCol, maxCol)) {
+        blankRun = 0;
+      } else if (timeRows.length && ++blankRun >= 3) {
+        cutAt = r - blankRun + 1;
+        break;
+      }
+      continue;
+    }
+    blankRun = 0;
+    if (timeRows.length && SUMMARY_LABEL.test(raw)) {
+      cutAt = r;
+      break;
+    }
     const t = parseTimeCell(raw);
     if (!t) {
       // 이름이 들어있는 행인데 시간만 못 읽은 경우에만 경고
-      const hasNames = Array.from(
-        { length: maxCol - firstDayCol + 1 },
-        (_, i) => cell(grid, r, firstDayCol + i),
-      ).some(Boolean);
+      const hasNames = rowHasContent(grid, r, firstDayCol, maxCol);
       if (hasNames) warnings.push(`${r + 1}행: 시간 "${raw}" 을 읽을 수 없습니다.`);
       continue;
     }
+    const prev = timeRows[timeRows.length - 1];
+    if (prev && t.start <= prev.start) {
+      warnings.push(
+        `${r + 1}행("${raw}")부터는 시간이 다시 앞으로 돌아갑니다. 시간표 아래의 다른 표로 보고 무시했습니다.`,
+      );
+      cutAt = r;
+      break;
+    }
     timeRows.push({ r, start: t.start, end: t.end });
+  }
+  if (cutAt >= 0 && hasContentBelow(grid, cutAt, maxCol)) {
+    const lastRow = timeRows.length ? timeRows[timeRows.length - 1].r : cutAt - 1;
+    warnings.push(`${lastRow + 2}행 아래는 시간표 밖으로 보고 무시했습니다.`);
   }
   if (timeRows.length === 0) {
     warnings.push('시간 행을 찾지 못했습니다. "08:30~09:00" 형식인지 확인하세요.');
@@ -310,10 +384,27 @@ export function parseTimetableGrid(input) {
   }
 
   // ── 4. 요일별 열 범위
+  // 마지막 요일 블록을 시트 오른쪽 끝까지로 잡으면 옆에 붙은 "비고 / 합계" 열이
+  // 그 요일의 근무자로 빨려 들어간다. 두 가지로 오른쪽 끝을 좁힌다.
+  const lastDayCol = dayCols[dayCols.length - 1].col;
+  let rightEdge = maxCol;
+  // (a) 요일 헤더 행에 요일이 아닌 라벨이 있으면 그 앞에서 끊는다
+  for (let c = lastDayCol + 1; c <= maxCol; c++) {
+    if (cell(grid, headerRow, c)) {
+      rightEdge = c - 1;
+      break;
+    }
+  }
+  // (b) 다른 요일 블록 중 가장 넓은 폭까지만 인정한다
+  if (dayCols.length >= 2) {
+    const widths = dayCols.slice(1).map((d, i) => d.col - dayCols[i].col);
+    rightEdge = Math.min(rightEdge, lastDayCol + Math.max(...widths) - 1);
+  }
+
   const blocks = dayCols.map(({ day, col }, i) => ({
     day,
     from: col,
-    to: i + 1 < dayCols.length ? dayCols[i + 1].col - 1 : maxCol,
+    to: i + 1 < dayCols.length ? dayCols[i + 1].col - 1 : rightEdge,
   }));
 
   // 시간 열과 첫 요일 열 사이에 이름이 있으면 알려준다
@@ -328,13 +419,38 @@ export function parseTimetableGrid(input) {
     }
   }
 
+  // 마지막 요일 오른쪽에서 잘라낸 내용도 알려준다
+  const droppedRight = [];
+  for (let c = rightEdge + 1; c <= maxCol; c++) {
+    for (const { r } of timeRows) {
+      const v = cell(grid, r, c);
+      if (v) {
+        droppedRight.push(`${c + 1}번째 열 "${v}"`);
+        break;
+      }
+    }
+  }
+  if (droppedRight.length) {
+    warnings.push(
+      `마지막 요일 오른쪽은 시간표 밖으로 보고 무시했습니다. (${droppedRight
+        .slice(0, 3)
+        .join(", ")}${droppedRight.length > 3 ? " 등" : ""})`,
+    );
+  }
+
   // ── 5. 요일 x 시간행마다 이름을 모으고, 사람별로 연속 행을 병합
+  // 제목은 요일 헤더에서 위로 올라가며 가장 가까운 줄에서 찾는다.
+  // 셀이 3개 이상 채워진 줄은 제목이 아니라 다른 표로 본다.
   const title = (() => {
-    for (let r = 0; r < headerRow; r++) {
+    for (let r = headerRow - 1; r >= 0; r--) {
+      const texts = [];
       for (let c = 0; c <= maxCol; c++) {
         const v = cell(grid, r, c);
-        if (v) return v;
+        if (v) texts.push(v);
       }
+      if (texts.length === 0) continue;
+      if (texts.length > 2) return "";
+      return texts.reduce((a, b) => (b.length > a.length ? b : a));
     }
     return "";
   })();
@@ -419,6 +535,15 @@ export function parseTimetableGrid(input) {
 
   if (nameOrder.length === 0) {
     warnings.push("근무자 이름을 하나도 찾지 못했습니다.");
+  }
+
+  const oddNames = nameOrder.filter(looksUnlikeName);
+  if (oddNames.length) {
+    warnings.push(
+      `이름 같지 않은 값이 명단에 들어왔습니다: ${oddNames.slice(0, 5).join(", ")}${
+        oddNames.length > 5 ? " 등" : ""
+      } — 시간표 안에 다른 표나 메모가 섞여 있는지 확인하세요.`,
+    );
   }
 
   const colors = {};
