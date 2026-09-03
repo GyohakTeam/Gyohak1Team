@@ -18,6 +18,7 @@ import ClassroomPanel from "./components/classroom/ClassroomPanel";
 import WorkerPanel from "./components/worker/WorkerPanel";
 import SchedulePage from "./components/SchedulePage";
 import PatchNotesModal from "./components/PatchNotesModal";
+import ContactModal from "./components/ContactModal";
 import { PATCH_NOTES } from "./patchNotes";
 import TimetableImportModal from "./components/TimetableImportModal";
 import AppHeader, { HeaderMark } from "./components/AppHeader";
@@ -64,6 +65,7 @@ function initial() {
 export default function App() {
   const [page, setPage] = useState("main"); // 'main' | 'schedule'
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [importFile, setImportFile] = useState(null); // 드래그로 떨어뜨린 파일
   const [showImport, setShowImport] = useState(false);
   const [schedule, setSchedule] = useState(() => initial().schedule);
@@ -551,6 +553,13 @@ export default function App() {
               시간표
             </button>
             <button
+              className="hdr-btn hdr-btn-primary"
+              onClick={() => setShowContact(true)}
+            >
+              <Icon name="phone" size={15} />
+              문의
+            </button>
+            <button
               className="hdr-btn hdr-btn-icon"
               title="패치 내역"
               onClick={() => setShowPatchNotes(true)}
@@ -563,6 +572,7 @@ export default function App() {
       {showPatchNotes && (
         <PatchNotesModal onClose={() => setShowPatchNotes(false)} />
       )}
+      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
       <div className="app-main">
         <ClassroomPanel
           classrooms={enrichedClassrooms}

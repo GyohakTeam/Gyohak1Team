@@ -16,6 +16,7 @@ import {
   workTimesToRanges,
 } from "../timetable";
 import AppHeader, { HeaderMark } from "./AppHeader";
+import ContactModal from "./ContactModal";
 import Icon from "./Icon";
 import { ExcelDropOverlay, useExcelDrop } from "./ExcelDrop";
 
@@ -67,6 +68,7 @@ export default function SchedulePage({
   const [nameDraft, setNameDraft] = useState("");
   const [notice, setNotice] = useState("");
   const [activeSlot, setActiveSlot] = useState(null); // 마지막으로 누른 시간 줄
+  const [showContact, setShowContact] = useState(false);
   const dragRef = useRef(null); // { mode: 'add' | 'remove' }
 
   const empty = isScheduleEmpty(schedule);
@@ -364,6 +366,13 @@ export default function SchedulePage({
                 </button>
               </>
             )}
+            <button
+              className="hdr-btn hdr-btn-primary"
+              onClick={() => setShowContact(true)}
+            >
+              <Icon name="phone" size={15} />
+              문의
+            </button>
           </>
         }
       />
@@ -645,6 +654,8 @@ export default function SchedulePage({
           </div>
         </>
       )}
+
+      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
 
       <ExcelDropOverlay show={dragging} />
 
