@@ -103,7 +103,9 @@ export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
                 onChange={(e) => handleStartChange(e.target.value)}
               >
                 {TIMES.slice(0, -1).map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </select>
               <span className="modal-time-sep">~</span>
@@ -113,7 +115,9 @@ export default function EventModal({ room, events, onAdd, onRemove, onClose }) {
                 onChange={(e) => setEndTime(e.target.value)}
               >
                 {endTimes.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </select>
               <button className="btn btn-primary" onClick={handleAddSelect}>

@@ -42,14 +42,15 @@ function readTimetable() {
         for (const day of DAYS) {
           clean[day] = (parsed.schedule[day] || [])
             .filter(
-              (w) => w?.name && Array.isArray(w.workTimes) && w.workTimes.length,
+              (w) =>
+                w?.name && Array.isArray(w.workTimes) && w.workTimes.length,
             )
             .map((w) => ({ name: w.name, workTimes: [...w.workTimes] }));
         }
         return { title: parsed.title || "", schedule: clean };
       }
     }
-  } catch { }
+  } catch {}
   // 기본값은 빈 시간표 — 명단은 시간표 페이지에서 엑셀로 불러온다
   return { title: "", schedule: emptySchedule() };
 }
@@ -182,7 +183,7 @@ export default function App() {
     clearRoster();
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch { }
+    } catch {}
     setSchedule(emptySchedule());
     setTitle("");
     resetAssignments();
@@ -325,8 +326,11 @@ export default function App() {
   // 시간표 변경 시 localStorage 자동 저장 (색은 schedule.js 가 따로 저장)
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 2, title, schedule }));
-    } catch { }
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ v: 2, title, schedule }),
+      );
+    } catch {}
   }, [schedule, title]);
 
   // 스케줄(시간표 페이지)이 바뀔 때 WorkerPanel의 workers 자동 동기화
@@ -532,7 +536,10 @@ export default function App() {
         }
         actions={
           <>
-            <button className="hdr-btn hdr-btn-primary" onClick={() => openImport()}>
+            <button
+              className="hdr-btn hdr-btn-primary"
+              onClick={() => openImport()}
+            >
               <Icon name="download" size={15} />
               시간표 불러오기
             </button>
@@ -596,7 +603,10 @@ export default function App() {
         />
       </div>
       {mode === "table" && (
-        <Toast status={status} onDismiss={() => setStatus({ text: "", type: "" })} />
+        <Toast
+          status={status}
+          onDismiss={() => setStatus({ text: "", type: "" })}
+        />
       )}
       <ExcelDropOverlay show={dragging} />
       {importModal}
