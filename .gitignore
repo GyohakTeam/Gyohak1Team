@@ -33,6 +33,9 @@ yarn-debug.log*
 yarn-error.log*
 
 .claude
-assets/
+# Local test fixtures only (root) — public/assets must stay tracked for deploys
+/assets/
 .vercel
 .env*
+outputs
+.codex_artifacts
