@@ -1,216 +1,220 @@
-/* ===== DAY SELECTOR ===== */
+/* ===== DAY SELECTOR (카드 헤더 안의 월~금 토글) ===== */
 .day-selector {
-  flex-shrink: 0;
   display: flex;
-  border-bottom: 1px solid var(--gray-200);
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
 }
 
 .day-btn {
-  flex: 1;
-  padding: 8px 0;
+  width: 29px;
+  height: 27px;
   border: none;
-  border-right: 1px solid var(--gray-200);
-  background: var(--white);
-  color: var(--gray-700);
-  font-size: 13px;
-  font-weight: bold;
-  font-family: inherit;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s;
-  letter-spacing: 0.05em;
+  transition: background 0.12s, color 0.12s;
 }
 .day-btn:last-child { border-right: none; }
-.day-btn:hover { background: var(--gray-100); color: var(--black); }
-.day-btn.active {
-  background: var(--black);
-  color: var(--white);
-}
+.day-btn:hover { background: var(--hover); color: var(--ink); }
+.day-btn.active { background: var(--ink); color: var(--white); }
+.day-btn.has-workers:not(.active) { color: var(--ink); }
+.day-btn.is-empty:not(.active) { color: #c2c5cb; }
 
 /* ===== WORKER FORM ===== */
 .worker-form {
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--gray-200);
-  background: var(--gray-100);
+  gap: 8px;
+  padding: 12px var(--pad-x) 13px;
 }
 
-.form-row { display: flex; align-items: center; gap: 8px; }
+.form-row { display: flex; align-items: center; gap: 10px; }
 
+/* 라벨 칸이 좁아서 "근무시간 ② (선택)" 이 줄바꿈되며 깨져 보였다 →
+   폭을 넓히고 줄바꿈을 막는다 */
 .form-label {
-  font-size: 11px;
-  color: var(--gray-700);
-  width: 64px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  width: 126px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
+.form-label .icon { color: var(--ink-3); }
+/* ①② 원문자는 폰트에 따라 깨져 보였다 → 숫자를 CSS 로 그린 원에 넣는다 */
+.form-label-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--gray-300);
+  border-radius: 50%;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink-2);
+}
+.form-label-opt { font-size: 11px; color: var(--ink-3); margin-left: 1px; }
+
+.input-wrap { position: relative; flex: 1; min-width: 0; }
 
 .form-input {
-  flex: 1;
-  padding: 6px 9px;
-  border: 1px solid var(--gray-300);
-  border-radius: 3px;
-  font-size: 12px;
-  font-family: inherit;
-  background: var(--white);
+  width: 100%;
+  height: 31px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  font-size: 12.5px;
+  background: var(--surface);
+  color: var(--ink);
   transition: border-color 0.15s;
 }
-.form-input:focus { outline: none; border-color: var(--black); }
+.form-input::placeholder { color: var(--ink-3); }
+.form-input:focus { outline: none; border-color: var(--ink); }
+
+/* 시간 입력은 프리셋 목록이 붙는다 — 목업의 드롭다운 화살표를 표시만 해둔다 */
+.form-input-time { padding-right: 28px; font-variant-numeric: tabular-nums; }
+.input-chevron {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+.worker-form-actions { display: flex; justify-content: flex-end; margin-top: 1px; }
 
 /* ===== SELECTION BANNER ===== */
 .selection-banner {
   flex-shrink: 0;
-  padding: 7px 14px;
-  background: var(--gray-100);
-  border-bottom: 2px solid var(--black);
-  border-left: 5px solid var(--black);
+  padding: 8px var(--pad-x);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
   font-size: 12px;
-  font-weight: bold;
-  color: var(--black);
+  font-weight: 600;
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 7px;
 }
+.selection-banner-hint { font-weight: 500; color: var(--ink-3); }
 
 /* ===== WORKER TABLE ===== */
-.num-cell { text-align: center; color: #999; font-size: 12px; }
-.del-cell { text-align: center; }
+.num-cell { width: 34px; text-align: center; color: var(--ink-3); font-size: 11.5px; }
+.assign-cell { width: 56px; white-space: nowrap; }
+.assign-count { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.assign-none { color: var(--ink-3); }
 
 .worker-name-cell {
   cursor: pointer;
-  font-weight: bold;
-  padding: 3px 8px 3px 6px;
-  border-radius: 3px;
+  font-weight: 700;
+  padding: 3px 9px 3px 7px;
+  border-radius: var(--r-sm);
   border-left: 3px solid transparent;
-  transition: filter 0.12s, background 0.12s;
   user-select: none;
   display: inline-block;
+  white-space: nowrap;
 }
-.worker-name-cell:hover { filter: brightness(0.88); }
+/* filter 대신 inset box-shadow — 개인 색 배경을 유지하면서 값싸게 강조 */
+.worker-name-cell:hover { box-shadow: inset 0 0 0 99px rgba(0, 0, 0, 0.1); }
+
+.worker-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  line-height: 1.4;
+}
 
 .work-time-badge {
   display: block;
-  font-family: monospace;
-  font-size: 11px;
-  color: var(--gray-700);
-  line-height: 1.6;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  line-height: 1.65;
+  white-space: nowrap;
 }
 
-.can-note        { font-size: 10px; margin-left: 4px; color: var(--gray-500); }
-.can-note.has-rooms { color: #2e7d32; }
+.can-note { color: var(--ink-3); }
+.can-note.has-rooms { color: var(--green); }
 
-.assigned-rooms {
-  font-size: 10px;
-  color: var(--gray-500);
-  margin-top: 2px;
-  line-height: 1.4;
-}
-.room-count-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: bold;
-  background: #e3f2fd;
-  color: #1565c0;
-  border: 1px solid #90caf9;
-  border-radius: 3px;
-  padding: 0 5px;
-  margin-right: 5px;
-  vertical-align: middle;
-}
+.assigned-rooms { color: var(--ink-3); }
 
-/* ===== TRIP BADGE ===== */
+/* ===== BADGES ===== */
 .trip-badge {
   display: inline-block;
   font-size: 10px;
-  font-weight: bold;
+  font-weight: 700;
   padding: 1px 6px;
-  border-radius: 10px;
-  margin-left: 5px;
+  border-radius: 9px;
   white-space: nowrap;
-  vertical-align: middle;
 }
-.trip-badge.trip-ok   { background: #d4edda; color: #1a6e2e; border: 1px solid #85c997; }
-.trip-badge.trip-warn { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
-.trip-badge.trip-err  { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
-
-/* ===== COUNT BAR ===== */
-.count-bar {
-  flex-shrink: 0;
-  padding: 7px 14px;
-  background: var(--black);
-  color: var(--gray-300);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-.count-bar strong { color: var(--white); font-size: 14px; }
+.trip-badge.trip-ok   { background: #eaf7ee; color: var(--green); border: 1px solid #c3e6cd; }
+.trip-badge.trip-warn { background: #fff8ed; color: var(--amber); border: 1px solid #f0d9b5; }
+.trip-badge.trip-err  { background: #fdf2f1; color: var(--red);   border: 1px solid #f0c6c2; }
 
 /* ===== HINT ===== */
 .hint-text {
   flex-shrink: 0;
   font-size: 11px;
-  color: var(--gray-500);
-  padding: 8px 14px;
-  border-top: 1px solid var(--gray-200);
-  line-height: 1.7;
-}
-
-/* ===== REASSIGN BANNER ===== */
-.reassign-banner {
-  flex-shrink: 0;
-}
-
-.reassign-fade {
-  height: 40px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 100%);
-  pointer-events: none;
-  margin-top: -40px;
-}
-
-.reassign-content {
-  background: var(--white);
-  padding: 14px 16px 16px;
-  border-top: 1px solid var(--gray-200);
-}
-
-.reassign-msg {
-  font-size: 12px;
-  color: var(--gray-700);
-  margin-bottom: 10px;
+  color: var(--ink-3);
+  padding: 9px var(--pad-x);
+  border-top: 1px solid var(--line-2);
   line-height: 1.6;
 }
 
-.reassign-btns {
+/* ===== REASSIGN CARD ===== */
+/* 우측 열 맨 아래에 고정 — 명단을 스크롤하지 않아도 보인다 */
+.reassign-card {
+  flex-shrink: 0;
+  padding: 12px var(--pad-x) 13px;
+  gap: 9px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.reassign-msg {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.reassign-msg .icon { color: var(--amber); margin-top: 1px; }
+
+.reassign-btns { display: flex; gap: 8px; }
+.reassign-btns .btn { flex: 1; }
+
+/* ===== 시간표 없음 안내 ===== */
+.worker-empty-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 12px var(--pad-x) 0;
+  background: #fff8ed;
+  border: 1px solid #f0d9b5;
+  border-radius: var(--r);
+  padding: 10px 11px;
 }
 
-.reassign-btn-dark {
-  flex: 1;
-  padding: 8px 0;
-  background: var(--black);
-  color: var(--white);
-  border: 1px solid var(--black);
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: bold;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.12s;
+.worker-empty-cta-text {
+  font-size: 11.5px;
+  color: var(--amber);
+  line-height: 1.65;
 }
-.reassign-btn-dark:hover { background: var(--gray-700); border-color: var(--gray-700); }
-
-.reassign-btn-light {
-  flex: 1;
-  padding: 8px 0;
-  background: var(--white);
-  color: var(--black);
-  border: 1px solid var(--gray-300);
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: bold;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.reassign-btn-light:hover { background: var(--gray-100); }

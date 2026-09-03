@@ -1,10 +1,12 @@
 import { useRef } from "react";
+import Icon from "../Icon";
 
+const STATUS_ICON = { ok: "check", err: "alert", warn: "alert", info: "info" };
 const STATUS_BORDER = {
-  ok: "#2e7d32",
-  err: "#b71c1c",
-  warn: "#888",
-  info: "#333",
+  ok: "#16803c",
+  err: "#b42318",
+  warn: "#b45309",
+  info: "#52565d",
 };
 
 export default function PasteMode({ status, onImport, onClear }) {
@@ -23,7 +25,12 @@ export default function PasteMode({ status, onImport, onClear }) {
 
   return (
     <div className="mode-wrap">
-      <div className="panel-title">강의실 점검 시간표</div>
+      <div className="card-head">
+        <h2 className="card-title">
+          <Icon name="clipboard-check" size={15} />
+          강의실 점검 시간표
+        </h2>
+      </div>
       <div className="paste-content">
         <div className="paste-hint">
           HWP·메모장 등에서 복사 후 아래에 <strong>붙여넣기(Ctrl+V)</strong>{" "}
@@ -45,6 +52,7 @@ export default function PasteMode({ status, onImport, onClear }) {
             className="status-bar"
             style={{ borderLeftColor: STATUS_BORDER[status.type] }}
           >
+            <Icon name={STATUS_ICON[status.type] || "info"} size={13} />
             {status.text}
           </div>
         )}
@@ -53,9 +61,11 @@ export default function PasteMode({ status, onImport, onClear }) {
             className="btn btn-primary"
             onClick={() => textareaRef.current && onImport(textareaRef.current.value)}
           >
+            <Icon name="table" size={15} />
             가져오기
           </button>
           <button className="btn btn-secondary" onClick={handleClear}>
+            <Icon name="rotate-ccw" size={15} />
             초기화
           </button>
         </div>

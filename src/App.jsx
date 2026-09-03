@@ -6,40 +6,71 @@ import {
   computeEffectiveSlots,
   canInspect,
 } from "./utils";
-import { SCHEDULE, DAYS, SCHEDULE_VERSION } from "./schedule";
+import {
+  DAYS,
+  clearRoster,
+  emptySchedule,
+  isScheduleEmpty,
+  registerNames,
+  resetRoster,
+} from "./schedule";
 import ClassroomPanel from "./components/classroom/ClassroomPanel";
 import WorkerPanel from "./components/worker/WorkerPanel";
 import SchedulePage from "./components/SchedulePage";
 import PatchNotesModal from "./components/PatchNotesModal";
+import { PATCH_NOTES } from "./patchNotes";
+import TimetableImportModal from "./components/TimetableImportModal";
+import AppHeader, { HeaderMark } from "./components/AppHeader";
+import Icon from "./components/Icon";
+import Toast from "./components/Toast";
+import { ExcelDropOverlay, useExcelDrop } from "./components/ExcelDrop";
 
-function initSchedule() {
+const STORAGE_KEY = "gyohak-timetable";
+
+/**
+ * 저장된 시간표를 읽는다.
+ * 버전이 다르다고 저장 내용을 버리지는 않는다 — 예전에는 상수 하나만 올려도
+ * 사용자가 손으로 고친 시간표가 조용히 전부 사라졌다.
+ */
+function readTimetable() {
   try {
-    const saved = localStorage.getItem("gyohak-schedule");
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.version === SCHEDULE_VERSION) return parsed.data;
+      if (parsed?.v === 2 && parsed.schedule) {
+        const clean = emptySchedule();
+        for (const day of DAYS) {
+          clean[day] = (parsed.schedule[day] || [])
+            .filter(
+              (w) => w?.name && Array.isArray(w.workTimes) && w.workTimes.length,
+            )
+            .map((w) => ({ name: w.name, workTimes: [...w.workTimes] }));
+        }
+        return { title: parsed.title || "", schedule: clean };
+      }
     }
-  } catch {}
-  // SCHEDULE 깊은 복사
-  const clone = {};
-  for (const day of DAYS) {
-    clone[day] = (SCHEDULE[day] || []).map((w) => ({
-      name: w.name,
-      workTimes: [...w.workTimes],
-    }));
-  }
-  return clone;
+  } catch { }
+  // 기본값은 빈 시간표 — 명단은 시간표 페이지에서 엑셀로 불러온다
+  return { title: "", schedule: emptySchedule() };
+}
+
+let _initial = null;
+function initial() {
+  if (!_initial) _initial = readTimetable();
+  return _initial;
 }
 
 export default function App() {
   const [page, setPage] = useState("main"); // 'main' | 'schedule'
   const [showPatchNotes, setShowPatchNotes] = useState(false);
-  const [schedule, setSchedule] = useState(initSchedule);
+  const [importFile, setImportFile] = useState(null); // 드래그로 떨어뜨린 파일
+  const [showImport, setShowImport] = useState(false);
+  const [schedule, setSchedule] = useState(() => initial().schedule);
+  const [title, setTitle] = useState(() => initial().title);
 
   const [classrooms, setClassrooms] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState(null);
-  const [manualMode, setManualMode] = useState(false);
   const [mode, setMode] = useState("paste"); // 'paste' | 'table'
   const [status, setStatus] = useState({ text: "", type: "" });
   const [isAssigning, setIsAssigning] = useState(false);
@@ -47,6 +78,14 @@ export default function App() {
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [events, setEvents] = useState([]);
+
+  // 시간표에 등록된 전체 근무자 수 (헤더 부제용)
+  const rosterCount = useMemo(() => {
+    const names = new Set();
+    for (const day of DAYS)
+      for (const w of schedule[day] || []) names.add(w.name);
+    return names.size;
+  }, [schedule]);
 
   const enrichedClassrooms = useMemo(
     () =>
@@ -65,24 +104,6 @@ export default function App() {
     workersRef.current = workers;
   }, [workers]);
 
-  // ===== SCHEDULE CHANGE =====
-  const handleScheduleChange = useCallback((newSchedule) => {
-    setSchedule(newSchedule);
-  }, []);
-
-  // ===== CLEAR SCHEDULE CACHE =====
-  const clearScheduleCache = useCallback(() => {
-    localStorage.removeItem("gyohak-schedule");
-    const clone = {};
-    for (const day of DAYS) {
-      clone[day] = (SCHEDULE[day] || []).map((w) => ({
-        name: w.name,
-        workTimes: [...w.workTimes],
-      }));
-    }
-    setSchedule(clone);
-  }, []);
-
   // ===== STATUS =====
   const showStatus = useCallback((text, type) => {
     setStatus({ text, type });
@@ -94,6 +115,78 @@ export default function App() {
       );
     }
   }, []);
+
+  // ===== SCHEDULE CHANGE =====
+  const handleScheduleChange = useCallback((newSchedule) => {
+    setSchedule(newSchedule);
+  }, []);
+
+  // ===== 배정 상태 초기화 (시간표가 통째로 바뀔 때) =====
+  const resetAssignments = useCallback(() => {
+    setWorkers([]);
+    setSelectedWorkerId(null);
+    setSelectedDay(null);
+    setShowReassignBanner(false);
+    workerCounterRef.current = 1;
+    pendingRemovedIdsRef.current = [];
+    setClassrooms((prev) => prev.map((c) => ({ ...c, inspectorId: null })));
+  }, []);
+
+  // ===== 엑셀 시간표 불러오기 =====
+  const importTimetable = useCallback(
+    ({ title: newTitle, schedule: newSchedule, names, colors }) => {
+      // 엑셀 셀 색이 있으면 그 색으로, 없으면 명단 순서대로 팔레트에서 배정
+      resetRoster(names, colors);
+      setSchedule(newSchedule);
+      setTitle(newTitle || "");
+      resetAssignments(); // 이전 명단·배정은 새 시간표와 맞지 않는다
+    },
+    [resetAssignments],
+  );
+
+  // ===== 불러오기 모달 =====
+  const openImport = useCallback((file = null) => {
+    setImportFile(file);
+    setShowImport(true);
+  }, []);
+
+  const closeImport = useCallback(() => {
+    setShowImport(false);
+    setImportFile(null);
+  }, []);
+
+  const applyImport = useCallback(
+    (parsed) => {
+      importTimetable(parsed);
+      closeImport();
+      showStatus(
+        `${parsed.names.length}명의 시간표를 불러왔습니다. 요일을 선택하세요.`,
+        "ok",
+      );
+    },
+    [importTimetable, closeImport, showStatus],
+  );
+
+  // ===== 화면 아무 곳에나 엑셀을 떨어뜨리면 불러오기 =====
+  const { dragging, dropProps } = useExcelDrop(
+    (file) => openImport(file),
+    (file) =>
+      showStatus(
+        `"${file.name}" 은 엑셀 파일이 아닙니다. .xlsx 파일을 올려주세요.`,
+        "err",
+      ),
+  );
+
+  // ===== 시간표 전체 비우기 =====
+  const clearTimetable = useCallback(() => {
+    clearRoster();
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch { }
+    setSchedule(emptySchedule());
+    setTitle("");
+    resetAssignments();
+  }, [resetAssignments]);
 
   // ===== IMPORT =====
   const importData = useCallback(
@@ -126,6 +219,15 @@ export default function App() {
     (day) => {
       const list = schedule[day];
       if (!list) return;
+      if (list.length === 0) {
+        showStatus(
+          isScheduleEmpty(schedule)
+            ? "시간표가 비어 있습니다 — 상단 '엑셀 불러오기'로 근로시간표를 읽어오세요."
+            : `${day}요일에 등록된 근무자가 없습니다.`,
+          "warn",
+        );
+        return;
+      }
       setClassrooms((prev) => prev.map((c) => ({ ...c, inspectorId: null })));
       setSelectedWorkerId(null);
       workerCounterRef.current = 1;
@@ -147,6 +249,7 @@ export default function App() {
   // ===== WORKERS =====
   const addWorker = useCallback((name, time1, time2) => {
     const workTimes = time2 ? [time1, time2] : [time1];
+    registerNames([name]); // 시간표에 없는 이름도 색을 받는다
     setWorkers((prev) => [
       ...prev,
       { id: uid(), number: workerCounterRef.current++, name, workTimes },
@@ -204,6 +307,12 @@ export default function App() {
     );
   }, []);
 
+  const unassignRoom = useCallback((id) => {
+    setClassrooms((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, inspectorId: null } : c)),
+    );
+  }, []);
+
   // ===== EVENTS =====
   const addEvent = useCallback((room, time) => {
     setEvents((prev) => [...prev, { id: uid(), room, time }]);
@@ -213,13 +322,12 @@ export default function App() {
     setEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
-  // schedule 변경 시 localStorage 자동 저장
+  // 시간표 변경 시 localStorage 자동 저장 (색은 schedule.js 가 따로 저장)
   useEffect(() => {
-    localStorage.setItem(
-      "gyohak-schedule",
-      JSON.stringify({ version: SCHEDULE_VERSION, data: schedule }),
-    );
-  }, [schedule]);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 2, title, schedule }));
+    } catch { }
+  }, [schedule, title]);
 
   // 스케줄(시간표 페이지)이 바뀔 때 WorkerPanel의 workers 자동 동기화
   useEffect(() => {
@@ -368,33 +476,83 @@ export default function App() {
     [selectedWorkerId, showStatus],
   );
 
+  const importModal = showImport ? (
+    <TimetableImportModal
+      initialFile={importFile}
+      onApply={applyImport}
+      onClose={closeImport}
+    />
+  ) : null;
+
   if (page === "schedule") {
     return (
-      <SchedulePage
-        schedule={schedule}
-        onScheduleChange={handleScheduleChange}
-        onBack={() => setPage("main")}
-        onClearCache={clearScheduleCache}
-      />
+      <>
+        <SchedulePage
+          schedule={schedule}
+          title={title}
+          rosterCount={rosterCount}
+          onScheduleChange={handleScheduleChange}
+          onTitleChange={setTitle}
+          onOpenImport={openImport}
+          onBack={() => setPage("main")}
+          onClearAll={clearTimetable}
+        />
+        {importModal}
+      </>
     );
   }
 
+  const scheduleEmpty = isScheduleEmpty(schedule);
+
   return (
-    <>
-      <header className="app-header">
-        강의실 점검 배정 시스템
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className="sch-nav-btn"
-            onClick={() => setShowPatchNotes(true)}
-          >
-            📋 패치내역
-          </button>
-          <button className="sch-nav-btn" onClick={() => setPage("schedule")}>
-            📅 시간표 보기
-          </button>
-        </div>
-      </header>
+    <div className="app-shell" {...dropProps}>
+      <AppHeader
+        left={<HeaderMark />}
+        title={
+          <div className="hdr-title">
+            강의실 점검 배정 시스템
+            <span className="hdr-ver">v{PATCH_NOTES[0]?.version}</span>
+          </div>
+        }
+        subtitle={
+          scheduleEmpty ? (
+            <span className="hdr-sub-warn">
+              <Icon name="alert" size={13} />
+              시간표 없음 — 엑셀 파일을 불러오세요
+            </span>
+          ) : (
+            <>
+              {title || "근로시간표"}
+              <span className="hdr-dot">·</span>
+              {selectedDay
+                ? `${selectedDay}요일 ${workers.length}명`
+                : `근무자 ${rosterCount}명`}
+            </>
+          )
+        }
+        actions={
+          <>
+            <button className="hdr-btn hdr-btn-primary" onClick={() => openImport()}>
+              <Icon name="download" size={15} />
+              시간표 불러오기
+            </button>
+            <button
+              className="hdr-btn hdr-btn-primary"
+              onClick={() => setPage("schedule")}
+            >
+              <Icon name="calendar-days" size={15} />
+              시간표
+            </button>
+            <button
+              className="hdr-btn hdr-btn-icon"
+              title="패치 내역"
+              onClick={() => setShowPatchNotes(true)}
+            >
+              <Icon name="clipboard-list" size={16} />
+            </button>
+          </>
+        }
+      />
       {showPatchNotes && (
         <PatchNotesModal onClose={() => setShowPatchNotes(false)} />
       )}
@@ -409,34 +567,39 @@ export default function App() {
           onImport={importData}
           onClear={clearAll}
           onSwitchToPaste={() => setMode("paste")}
-          manualMode={manualMode}
-          onToggleManualMode={() => setManualMode((v) => !v)}
           onInspectorClick={handleInspectorClick}
           onAutoAssign={handleAutoAssign}
           onReAssign={handleReAssign}
           isAssigning={isAssigning}
           onUpdateClassroom={updateClassroom}
+          onUnassign={unassignRoom}
           onAddEvent={addEvent}
           onRemoveEvent={removeEvent}
         />
         <WorkerPanel
           workers={workers}
           classrooms={enrichedClassrooms}
+          schedule={schedule}
           selectedWorkerId={selectedWorkerId}
           selectedDay={selectedDay}
-          manualMode={manualMode}
           onAddWorker={addWorker}
           onRemoveWorker={removeWorker}
           onUpdateWorker={updateWorker}
           onSelectWorker={selectWorker}
           onLoadDay={loadDay}
+          scheduleEmpty={isScheduleEmpty(schedule)}
+          onGoSchedule={() => setPage("schedule")}
           showStatus={showStatus}
           showReassignBanner={showReassignBanner}
           onReAssign={handleReAssign}
           onDismissReassignBanner={() => setShowReassignBanner(false)}
         />
       </div>
-      <div className="app-version">v1.7.1</div>
-    </>
+      {mode === "table" && (
+        <Toast status={status} onDismiss={() => setStatus({ text: "", type: "" })} />
+      )}
+      <ExcelDropOverlay show={dragging} />
+      {importModal}
+    </div>
   );
 }

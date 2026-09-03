@@ -6,6 +6,7 @@ import './styles/layout.css';
 import './styles/shared.css';
 import './styles/classroom.css';
 import './styles/worker.css';
+import './styles/fairness.css';
 import './styles/schedule.css';
 import './styles/modal.css';
 

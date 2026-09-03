@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { canInspect, parseRange, countTrips, getWorkerFloors } from "../../utils";
 import { getPersonColor } from "../../schedule";
+import Menu from "../Menu";
 
 export default function WorkerRow({
   worker,
@@ -30,11 +31,11 @@ export default function WorkerRow({
       return;
     }
     if (!parseRange(t1)) {
-      showStatus("근무시간 ① 형식 오류. 예: 08:30-11:30", "err");
+      showStatus("첫 번째 근무시간 형식 오류. 예: 08:30-11:30", "err");
       return;
     }
     if (t2 && !parseRange(t2)) {
-      showStatus("근무시간 ② 형식 오류. 예: 13:30-18:00", "err");
+      showStatus("두 번째 근무시간 형식 오류. 예: 13:30-18:00", "err");
       return;
     }
     const workTimes = t2 ? [t1, t2] : [t1];
@@ -62,7 +63,7 @@ export default function WorkerRow({
   const nameStyle = isSel
     ? { backgroundColor: color + "44", borderLeft: `3px solid ${color}` }
     : isAssigned
-      ? { backgroundColor: "#d0d0d0", borderLeft: "3px solid #999" }
+      ? { backgroundColor: "#e6e7ea", borderLeft: "3px solid #a9adb4" }
       : { backgroundColor: color + "55", borderLeft: `3px solid ${color}` };
 
   return (
@@ -73,24 +74,26 @@ export default function WorkerRow({
           className="worker-name-cell"
           style={nameStyle}
           onClick={() => !isEditing && onSelectWorker(worker.id)}
+          title={isSel ? "다시 클릭하면 선택 해제" : "클릭하면 담당 강의실이 색으로 표시됩니다"}
         >
           {worker.name}
         </span>
-        {trips > 0 && (
-          <span className={`trip-badge trip-${tripLevel}`}>{tripLabel}</span>
-        )}
-        {floorLabel && (
-          <span className={`trip-badge trip-${floorLevel}`}>{floorLabel}</span>
-        )}
-        {classrooms.length > 0 && (
-          <span className={`can-note${canCount > 0 ? " has-rooms" : ""}`}>
-            ({canCount}개 가능)
-          </span>
-        )}
-        {myRooms.length > 0 && (
-          <div className="assigned-rooms">
-            <span className="room-count-badge">{myRooms.length}개 담당</span>
-            {myRooms.join(", ")}
+        {(isAssigned || classrooms.length > 0) && (
+          <div className="worker-sub">
+            {trips > 0 && (
+              <span className={`trip-badge trip-${tripLevel}`}>{tripLabel}</span>
+            )}
+            {floorLabel && (
+              <span className={`trip-badge trip-${floorLevel}`}>{floorLabel}</span>
+            )}
+            {!isAssigned && classrooms.length > 0 && (
+              <span className={`can-note${canCount > 0 ? " has-rooms" : ""}`}>
+                {canCount}개 가능
+              </span>
+            )}
+            {isAssigned && (
+              <span className="assigned-rooms">{myRooms.join(", ")}</span>
+            )}
           </div>
         )}
       </td>
@@ -121,22 +124,35 @@ export default function WorkerRow({
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div>
-              {worker.workTimes.map((t, i) => (
-                <span key={i} className="work-time-badge">{t}</span>
-              ))}
-            </div>
-            <button className="edit-slot-btn" onClick={startEdit} title="근무시간 수정">
-              ✏
-            </button>
-          </div>
+          worker.workTimes.map((t, i) => (
+            <span key={i} className="work-time-badge">{t}</span>
+          ))
         )}
       </td>
-      <td className="del-cell">
-        <button className="btn btn-danger btn-sm" onClick={() => onRemoveWorker(worker.id)}>
-          ✕
-        </button>
+      <td className="assign-cell">
+        {isAssigned ? (
+          <span className="assign-count">{myRooms.length}개</span>
+        ) : (
+          <span className="assign-none">—</span>
+        )}
+      </td>
+      <td className="row-menu-cell">
+        <Menu
+          items={[
+            { label: "근무시간 수정", icon: "pencil", onClick: startEdit },
+            {
+              label: isSel ? "선택 해제" : "담당 강의실 보기",
+              icon: isSel ? "x" : "search",
+              onClick: () => onSelectWorker(worker.id),
+            },
+            {
+              label: "명단에서 삭제",
+              icon: "trash",
+              danger: true,
+              onClick: () => onRemoveWorker(worker.id),
+            },
+          ]}
+        />
       </td>
     </tr>
   );
