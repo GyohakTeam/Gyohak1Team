@@ -54,16 +54,20 @@ export default function ClassroomRow({
   const inspClass = [
     "inspector-cell",
     inspector ? "assigned" : "",
-    selectedWorkerId && assignable ? "can-assign" : "",
+    selectedWorkerId && assignable && !inspector ? "can-assign" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  // 수동 모드 토글 없이 언제나 클릭으로 배정할 수 있다
+  // 빈 칸만 클릭으로 배정된다 — 이미 배정된 칸은 '배정 해제' 후에 다시 배정
   const title = selectedWorkerId
-    ? assignable
-      ? "클릭하여 배정"
-      : "근무시간 불일치"
+    ? inspector
+      ? inspector.id === selectedWorkerId
+        ? "이미 배정된 근무자입니다"
+        : `${inspector.name} 배정됨 — 바꾸려면 먼저 배정 해제`
+      : assignable
+        ? "클릭하여 배정"
+        : "근무시간 불일치"
     : inspector
       ? `${inspector.name} — 클릭 시 선택`
       : "명단에서 근무자를 먼저 선택하세요";

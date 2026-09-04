@@ -458,20 +458,9 @@ export default function App() {
           return prev;
         }
 
-        if (classroom.inspectorId === selectedWorkerId) {
-          setSelectedWorkerId(null);
-          showStatus(`${classroom.room} 배정 해제`, "info");
-          return prev.map((c) =>
-            c.id === classroomId ? { ...c, inspectorId: null } : c,
-          );
-        }
-
-        if (classroom.inspectorId) {
-          showStatus(`${classroom.room} 배정 변경`, "info");
-          return prev.map((c) =>
-            c.id === classroomId ? { ...c, inspectorId: selectedWorkerId } : c,
-          );
-        }
+        // 이미 배정된 칸은 클릭으로 바뀌지 않는다 (덮어쓰기·해제 모두 없음)
+        // 바꾸려면 행 메뉴의 '배정 해제' 후 다시 배정
+        if (classroom.inspectorId) return prev;
 
         showStatus(`${classroom.room} 배정 완료`, "ok");
         return prev.map((c) =>

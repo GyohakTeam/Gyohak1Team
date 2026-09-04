@@ -128,8 +128,9 @@ export default function WorkerPanel({
 
           {workers.length > 0 && (
             <div className="hint-text">
-              이름을 클릭하면 담당 강의실이 색으로 표시되고, 그 상태에서 점검자
-              칸을 클릭하면 배정·해제됩니다.
+              이름을 클릭하면 담당 강의실이 색으로 표시되고, 그 상태에서 비어
+              있는 점검자 칸을 클릭하면 배정됩니다. 이미 배정된 칸은 강의실 행의
+              메뉴에서 '배정 해제'를 한 뒤에 다시 배정할 수 있습니다.
             </div>
           )}
         </section>
